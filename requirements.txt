@@ -1,0 +1,32 @@
+# ============================================================
+# Requirements for Underwater Acoustics Absorption Project
+# ============================================================
+# Install PyTorch with CUDA first (for NVIDIA RTX 4050, Python 3.13):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+# Then install the rest:
+#   pip install -r requirements.txt
+# ============================================================
+
+# --- Core Scientific Stack ---
+numpy
+pandas
+scipy
+matplotlib
+
+# --- Machine Learning ---
+scikit-learn
+
+# --- Deep Learning (CUDA 12.4) ---
+# Install separately: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+# torch
+# torchvision
+
+# --- Data Generation ---
+numba
+
+# --- Optimisation (Notebook 08) ---
+pymoo
+
+# --- Jupyter ---
+jupyter
+ipykernel
