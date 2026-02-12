@@ -1,0 +1,1043 @@
+=== PAGE 1 ===
+On-demand prediction of low-frequency average sound absorption 
+coefficient of underwater coating using machine learning
+Nansha Gao a,*
+, Mou Wang b, Xiao Liang c, Guang Pan a
+a Key Laboratory of Unmanned Underwater Vehicle, School of Marine Science and Technology, Northwestern Polytechnical University, Xi’an 710072, China
+b Institute of Acoustics, Chinese Academy of Sciences, Beijing 100190, China
+c Xiangtan University, School of Mechanical Engineering and Mechanics, Xiangtan 411105, China
+A R T I C L E  I N F O
+Keywords:
+Underwater sound absorption
+Transfer-matrix method
+Machine learning
+Deep neural network
+On-demand prediction
+A B S T R A C T
+This study proposes an underwater coating with sound absorption ability in the middle-to-low frequency range 
+and establishes an acoustic theoretical model combining the equivalent medium theory and the transfer matrix 
+method. The sound absorption coefficient, surface characteristic impedance, equivalent volume longitudinal 
+wave modulus, and equivalent sound velocity are calculated and solved. Using the preset 20 sensitive parameters 
+and the hypercube sampling method, this study establishes 100,000 random sound absorption coefficient curves 
+in the frequency range of 1 Hz–1,000 Hz. Further, deep neural networks are employed to predict the average 
+value of the sound absorption coefficient curve. The overall loss function is derived by combining the mean 
+square error between the expected average sound absorption coefficient and its predicted value and the network- 
+optimized loss function to ensure that the 20 sensitive parameters that meet the acoustic performance can be 
+predicted. Finally, two randomly selected sound absorption curves are used for prediction tests. The verification 
+results indicate that the error between the expected average absorption coefficient and the predicted average 
+absorption coefficient corresponding to the 20 sensitive parameters is only 0.026 % and 0.33 %. The proposed 
+method can be extended to predict the average absorption coefficient value for any acoustic structure, which 
+could be beneficial for the performance development of acoustic functional devices.
+1. Introduction
+One of the main development directions in the field of acoustic 
+metamaterials [1–3] in recent years has been how to apply artificial 
+intelligence to design acoustic structures and materials on demand [4], 
+and machine learning-based methods have undoubtedly been verified as 
+one of the effective means [5–7]. Currently, machine learning is the 
+mainstream method for solving artificial intelligence-related problems, 
+and as an independent direction in the field, it is developing rapidly. The 
+key to combining machine learning with acoustic metamaterials lies in 
+developing and applying artificial intelligence-based algorithms that 
+can enable machines to learn from sample databases and improve the 
+ability of metamaterials to control sound waves. The applications of 
+machine learning to the fields of speech recognition [8], computer 
+vision [9], natural language processing [10], material behavior [11], 
+non-destructive evaluation [12] and healthcare [13] have achieved 
+notable success in recent years. The design process of acoustic meta­
+materials involves many fields, including physics, acoustics, materials, 
+and engineering. In the past, theoretical calculations and finite element 
+methods faced the limitation that a structure defines the performance 
+[14]. However, this approach includes numerous trials, has high error 
+and labor costs, and requires much time and computational resources, 
+which is unfavorable for the rapid optimization design of acoustic 
+metamaterials.
+Regarding the design of acoustic materials, various machine 
+learning-based methods have been proposed for optimizing acoustic 
+structures and materials, and they can be mainly divided into the 
+following categories. Supervised learning is a subfield of the machine 
+learning field, and a support vector machine (SVM) is a powerful su­
+pervised learning-based model that has been widely used in classifica­
+tion and regression tasks. The SVM can be used in the design of acoustic 
+metamaterials to classify the acoustic properties of materials and to 
+predict the impact of different structural parameters on a material’s 
+performance, providing data-driven guidance for material design [15]. 
+Unlike supervised learning, unsupervised learning does not use 
+pre-labeled data to train models. On the contrary, it discovers hidden 
+* Corresponding author.
+E-mail address: gaonansha@nwpu.edu.cn (N. Gao). 
+Contents lists available at ScienceDirect
+Results in Engineering
+journal homepage: www.sciencedirect.com/journal/results-in-engineering
+https://doi.org/10.1016/j.rineng.2025.104163
+Received 12 December 2024; Received in revised form 23 January 2025; Accepted 23 January 2025  
+Results in Engineering 25 (2025) 104163 
+Available online 24 January 2025 
+2590-1230/© 2025 The Authors. Published by Elsevier B.V. This is an open access article under the CC BY-NC-ND license ( http://creativecommons.org/licenses/by- 
+nc-nd/4.0/ ). 
+
+
+=== PAGE 2 ===
+patterns in data by analyzing the features in a particular dataset. The 
+principal component analysis (PCA) is a statistical technique that can 
+reduce data dimensionality while preserving as much original data as 
+possible. The PCA can be used to analyze and simplify complex datasets 
+in acoustic metamaterial design optimization [16–18]. This helps 
+identify the key factors affecting material properties, thus ensuring more 
+effective material design and optimization. Reinforcement learning can 
+be described as a combination of the optimization and decision-making 
+processes, which lies between supervised and unsupervised learning. 
+Reinforcement learning is highly suitable for multi-objective optimiza­
+tion and for solving high-dimensional parameter space problems in 
+acoustic metamaterial design [19]. Design tasks typically involve 
+finding an optimal solution in a complex parameter space by adjusting 
+the periodic structures, geometric shapes, and other material parame­
+ters. For instance, reinforcement learning can effectively balance the 
+objectives of acoustic transmission, isolation, and focusing performance 
+[20–22]. The DL is a branch of machine learning [4,23–25] that can be 
+applied to all three types of learning: unsupervised learning, supervised 
+learning, and reinforcement learning. In deep reinforcement learning 
+(DRL), deep neural networks (DNNs) can approximate value functions 
+and optimize strategies. Compared to traditional machine learning 
+techniques, DL models can solve complex learning and decision-making 
+problems by constructing DNNs [26–30]. This enables them to learn 
+more complex feature representations and abstract concepts effectively. 
+A convolutional neural network (CNN) is an artificial neural network 
+[31–34] that has multiple advantages in processing grid-structured data. 
+Unlike traditional fully connected neural networks, CNNs integrate 
+spatial structural information on input data by introducing convolu­
+tional layers, pooling layers, and local connections.
+Recently, the design of acoustic metamaterials has experienced a 
+shift toward more complex model architectures, such as neural net­
+works, CNNs, DRLs, and GANs. These DL-based models for optimizing 
+acoustic metamaterial structures show significant advantages and 
+applicability in practical tasks. The efficiency and performance of 
+acoustic metamaterial design can be improved by defining appropriate 
+method requirements and task objectives based on specific design de­
+mands. For instance, a CNN-based prediction method for an ultra-thin 
+metasurface acoustic absorber, which can significantly reduce the 
+characterization time while maintaining accuracy, was developed in 
+[35]. Based on deep learning, broadband acoustic metamaterials oper­
+ating within the target frequency band were designed, and it was 
+confirmed that an average absorption coefficient was higher than 97 % 
+Fig. 1. The schematic diagram of geometric structural dimensions of the proposed underwater coating. (a) represents the arrangement and combination of un­
+derwater coating. (b) is the central section of the underwater coating. (c) represents the hollow cylindrical model of the second, third, fourth, fifth, eighth, and ninth 
+layers in radial coordinates.
+N. Gao et al.                                                                                                                                                                                                                                     
+Results in Engineering 25 (2025) 104163 
+2 
+
+
+=== PAGE 3 ===
+in the ultra-wideband range of 860 Hz to 8000 Hz [7]. In addition, a 
+DNN-based inverse prediction mechanism was used to design 
+low-frequency absorption absorbers based on Helmholtz resonators 
+[36], and the trained convolutional neural network was used to predict 
+the optimal design parameters based on the desired absorption charac­
+teristics with high fidelity in reverse. An improved Gaussian-Bayesian 
+model 
+was 
+effectively 
+applied 
+to 
+the 
+design 
+of 
+machine 
+learning-assisted subwavelength absorbers with coherent coupling weak 
+resonance, ensuring flexibility, efficiency, and broadband characteris­
+tics at frequencies lower than 500 Hz [37]. Further, a machine 
+learning-based deep autoencoder (DAE) model was used to predict ab­
+sorption peak points and highly complex acoustic structures [30].
+Different from the above airborne acoustic metamaterials, the design 
+of underwater acoustic metamaterials, especially for the design of un­
+derwater coating, improving sound absorption performance is a chal­
+lenging target due to underwater impedance mismatch and underwater 
+pressure resistance limitations. In addition, due to the high production 
+and experimental costs of underwater coating, accurate estimation of 
+their acoustic properties is required before preparing experimental 
+samples, especially predicting the structural and material parameters 
+corresponding to the expected average sound absorption coefficient 
+within a specific frequency band, which is a key factor. Previous studies 
+employed the method of introducing prior knowledge into data-driven 
+structural optimization at low frequencies and reduced the average 
+acoustic transmission loss by 31.78 % compared to traditional imped­
+ance gradient design [38]. In addition, machine learning-based and 
+optimization algorithms were combined with finite element models to 
+realize an accelerated reverse design of acoustic coatings in underwater 
+sound attenuation applications; this approach increased the prediction 
+speed of absorption coefficients by 4500 times and provided 
+high-performance suboptimal solutions rapidly and efficiently. In earlier 
+studies, artificial intelligence methods were not used to predict the 
+average value of sound absorption performance. However, for the sound 
+absorption performance of acoustic metamaterials, the average sound 
+absorption coefficient in a certain frequency band represents the 
+strength of their ability to absorb incident sound waves. This is of great 
+help for the rapid and intelligent design of acoustic metamaterials.
+Starting from predicting the structural dimensions and material 
+properties of the underwater acoustic cover layer in the mid to low 
+frequency range, especially within 1000 Hz, firstly, this study proposes a 
+theoretical calculation method for an underwater coating structure with 
+embedded multi-layer cavities and uses 100,000 sound absorption 
+curves as a sample database. Secondly, 20 sensitive parameters are 
+predicted based on the average value of a randomly selected sound 
+absorption coefficient curve in the target frequency range of 1 Hz–1000 
+Hz. Thirdly, it is shown that the average sound absorption coefficient 
+corresponding to the predicted sensitive parameters has a very small 
+error compared to the average value of the randomly selected sound 
+absorption coefficient curve. Finally, the proposed machine learning- 
+based method could accelerate the development process of underwa­
+ter acoustic materials and provide a convenient means for underwater 
+acoustic manipulation. This study is organized as follows. In section2, 
+the structure and materials of underwater coating, as well as the 
+calculation methods for acoustic properties, are presented in detail. 
+Moreover, Section 2 gives out the preselected 100,000 representative 
+sound absorption curves from the sample database. Section 3 presents 
+deep learning-based framework and corresponding method. Section 4
+provides the predicted results and errors for the average of any two 
+absorption curves. Finally, we present conclusions in Section 5. The 
+contribution of this study lies in its valuable reference for the rapid 
+estimation and on-demand design of acoustic performance of under­
+water coatings, which improves the development efficiency of acoustic 
+performance of underwater functional devices. Machine learning 
+methods to predict the inverse structural parameters of a given average 
+sound absorption coefficient also provides assistance for the develop­
+ment of more acoustic materials. It is a manifestation of the application 
+of artificial intelligence methods in acoustic materials or structures.
+2. Acoustic theoretical models and databases
+This study proposes an underwater coating that can achieve good 
+sound absorption performance in the low-to-middle frequency range. 
+The periodic array combination is shown in Fig. 1a, and the proposed 
+underwater coating with rigid boundaries between the units is displayed 
+in Fig. 1. A rigid backing is placed at the bottom of the underwater 
+coating to achieve complete reflection conditions. The incident sound 
+waves in the water enter the underwater coating units from top to 
+bottom. Each unit is divided into 10 layers, where the second, third, 
+fifth, sixth, eighth, and ninth layers are hollow structures. The geometric 
+structure parameters of the underwater coating are shown in Table 1; 
+the units’ substrate material is rubber, and their material parameters are 
+presented in Table 2.
+As shown in Figs. 1a and 1b, there are six layers of hollow structures 
+inside the underwater coating, which can be considered uniform rubber 
+layers with equivalent parameters. Accordingly, the structure presented 
+in Fig. 1b can be regarded as a combination of multiple layers of rubber 
+with different equivalent parameters. In this study, each layer of a 
+hollow structure is considered a mechanical model of a hollow circular 
+tube, as displayed in Fig. 1c. Therefore, an elastic wave excited by the 
+incident sound wave entering the structure of underwater coating has 
+the same direction as the incident sound wave, and the dynamic elastic 
+modulus in rubber can be expressed using the Lame constant λ and 
+complex shear modulus μ, which are respectively defined as follows: 
+λ =
+E⋅ν
+(1 + ν)(1 −2ν),
+(1) 
+μ =
+E
+2(1 + ν),
+(2) 
+In the cylindrical coordinate system, the rubber layer of the hollow 
+structure can be treated as a pipeline with viscoelastic properties, and 
+the corresponding mechanical equations are as follows: 
+ρ ∂2ur
+∂t2 = (λ + 2μ) ∂
+∂r
+[1
+r
+∂(rur)
+∂r
+]
++ (λ + μ) ∂2ur
+∂r∂z + μ ∂2ur
+∂z2
+(3) 
+ρ ∂2uz
+∂t2 = (λ + 2μ) ∂2uz
+∂z2 + (λ + μ)
+r
+∂2(ruz)
+∂r∂z + μ
+r
+∂
+∂r
+(
+r ∂uz
+∂r
+)
+(4) 
+where ur and uz are the vibration displacements along the R and Z di­
+rections, respectively.
+At the hollow part’s interface, that is, the radius boundary of r = mi/2 
+(i = 2, 3, 5, 6, 8, 9) is a free surface, and normal stress σrz and shear stress 
+τrz both equal zero. Due to the fixed installation of underwater coating in 
+practical use, the outer boundary r = w/2 is stationary, and ur and shear 
+stress τrz are both zeros. Further, normal stress σrz and shear stress τrz in 
+cylindrical coordinates can be respectively expressed by: 
+Table 1 
+Specific structural sizes of units expressed in mm.
+W
+d1
+d2
+d3
+d4
+d5
+d6
+d7
+d8
+2E3
+10
+10
+10
+10
+10
+10
+10
+10
+d9
+d10
+m2
+m3
+m5
+m6
+m8
+m9
+​
+10
+10
+1E3
+1E3
+1E3
+1E3
+1E3
+1E3
+​
+Table 2 
+Mechanical parameters of the units.
+Density ρ
+Young’s modulus E
+loss factor η
+Poisson’s ratio ν
+1130 kg/m3
+5E7(1+ηi) Pa
+0.4
+0.44
+N. Gao et al.                                                                                                                                                                                                                                     
+Results in Engineering 25 (2025) 104163 
+3 
+
+
+=== PAGE 4 ===
+σrz = λ
+[1
+r
+∂(rur)
+∂r
++ ∂uz
+∂z
+]
++ 2μ ∂uz
+∂r ,
+(5) 
+τrz = μ
+[∂uz
+∂r + ∂ur
+∂z
+]
+,
+(6) 
+In this study, the harmonic plane waves propagate through the un­
+derwater coating along the Z-direction, which can be expressed by: 
+uz = Aej(ωt−kʹz),
+(7) 
+where k′ is the equivalent complex wave number, which includes 
+longitudinal wave number kl and shear wave number kτ, and it is defined 
+by: 
+kl =
+̅̅̅̅̅̅̅̅̅̅̅̅̅
+ρω2
+λ + 2μ
+√
+, kτ =
+̅̅̅̅̅̅̅̅
+ρω2
+μ
+√
+,
+(8) 
+By substituting Eq. (7) into Eq. (4), ur and uz can be solved, and an 
+equivalent complex wave number k′ can be obtained. By combining Eqs. 
+(9) and (10) with acoustic boundary conditions, a homogeneous system 
+of equations with undetermined coefficients C1 – C4 can be obtained, 
+and further the characteristic equation containing k′ can be obtained 
+Fig. 2. The sketch map of the FEM method (a) and the sound absorption coefficient calculation results (b), red dotted line and black solid line represent FEM and 
+acoustic theoretical calculations, respectively.
+N. Gao et al.                                                                                                                                                                                                                                     
+Results in Engineering 25 (2025) 104163 
+4 
+
+
+=== PAGE 5 ===
+uz = C1J0
+(
+r
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+l −kʹ2
+√
+)
++ C2N0
+(
+r
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+l −kʹ2
+√
+)
++ C3J0
+(
+r
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+τ −kʹ2
+√
+)
++ C4N0
+(
+r
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+τ −kʹ2
+√
+)
+(9) 
+ur = −jC1
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+l −kʹ2
+√
+kʹ
+J1
+(
+r
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+l −kʹ2
+√
+)
+−jC2
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+l −kʹ2
+√
+kʹ
+N1
+(
+r
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+l −kʹ2
+√
+)
++jC3
+kʹ
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+τ −kʹ2
+√
+J1
+(
+r
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+τ −kʹ2
+√
+)
++ jC4
+kʹ
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+τ −kʹ2
+√
+N0
+(
+r
+̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅̅
+k2
+τ −kʹ2
+√
+)
+(10) 
+This study defines ε = mi/w as the perforation rate of a layer, and the 
+volume longitudinal wave modulus S′, the equivalent density ρ’, and the 
+equivalent complex sound velocity c’ are respectively expressed by: 
+Sʹ = μ(λ + 2μ)(ε2 + 1) + 2ε2λ
+(λ + μ)ε2 + μ
+,
+(9a) 
+ρʹ = ρ
+(
+1 −ε2)
+,
+(10a) 
+cʹ =
+̅̅̅
+Sʹ
+ρʹ
+√
+,
+(11) 
+After obtaining the equivalent parameters of each layer of under­
+water coating, the transfer matrix method is used to solve the sound 
+absorption coefficient. Then, the transfer matrix [Ti] of the i th layer is 
+expressed by: 
+[Ti] =
+⎡
+⎢⎣
+cos(kʹ
+idi)
+jρʹcʹ
+isin(kʹ
+idi)
+jsin(kʹidi)
+ρʹcʹ
+cos(kʹ
+idi)
+⎤
+⎥⎦, i = 1, 2, ..., 10,
+(12) 
+Considering the requirement for equivalent sound pressure conti­
+nuity and equivalent volume velocity continuity between the layers, as 
+well as the condition of incident wave perpendicular incidence, the total 
+matrix [T] can be expressed by: 
+[T] = [T1][T2][T3]…[T10], i = 1, 2, ..., 10,
+(13) 
+The bottom end of the underwater coating studied in this work is set 
+as a rigid backing. Then, the surface impedance Zin of the overall 
+structure can be calculated using Eqs. (12) and (13), which can be 
+further used to determine the complex reflection coefficient of the un­
+derwater coating as follows: 
+R = Zin −ρwcw
+Zin + ρwcw
+,
+(14) 
+To verify the correctness of the above acoustic theoretical calcula­
+tions, we used finite element method (FEM) to calculate the sound ab­
+sorption coefficient of the underwater coating in Fig. 1. In order to 
+improve computational efficiency, the FEM simulation calculation of 
+underwater coating is carried out using the two-dimensional axisym­
+metric model in COMSOL Multiphysics version 6.2 [39,40,41]. The FEM 
+model is shown in Fig. 2(a), where the incident sound wave is applied to 
+the left water area in the form of a background pressure field. The dotted 
+line below is the axis of symmetry of the model, and normal displace­
+ment constraints are applied to the side boundaries. In the entire model, 
+the water and air domains are fluid domains, and the pressure acoustic 
+module is used for modeling. The acoustic cover layer and rigid backing 
+are solid media, and the solid mechanics module is used for modeling. 
+Apply acoustic structural interaction boundary conditions at the 
+boundary between solid and fluid regions. Add a Perfect Match Layer 
+(PML) to the outer boundary of the water body. The principle of solving 
+using finite element method is as follows.
+In a uniform incompressible ideal fluid medium, the acoustic wave 
+equation is: 
+1
+c
+∂2p
+∂t2 −∇2p = 0
+(15) 
+Where c is the speed of sound in the fluid medium, p is the sound 
+pressure, and t is time. By solving the motion equation and acoustic/ 
+structural coupling equation in the fluid domain [38], the reflection 
+coefficient R and transmission coefficient T can be obtained. Therefore, 
+only (0,0) order waves are considered in this study, and the absorption 
+coefficient α is calculated as follows: 
+α = 1 −R2 −T2
+(16) 
+From Fig. 2, it can be seen that the FEM calculation results are almost 
+consistent with the acoustic theoretical calculations in the frequency 
+range of 1 Hz–1000 Hz, further confirming the correctness of the 
+acoustic theoretical calculations. The absorption coefficient curve is 
+presented in Fig. 3, where it can be seen that in the range of 1 Hz–1000 
+Hz, the absorption coefficient has a peak around 100 Hz, and the ab­
+sorption coefficient throughout the entire frequency band is <0.6. The 
+reflection and absorption coefficients have symmetrical but opposite 
+variation patterns. As shown in Fig. 3, the real and imaginary parts of the 
+surface impedance of the overall structure gradually decrease with the 
+frequency. The purple dashed line in Fig. 3 represents the characteristic 
+impedance of the sound waves in aqueous media. The results indicated 
+that when the real and imaginary parts of the surface impedance of the 
+Fig. 3. The imaginary and real parts of the sound absorption coefficient, 
+reflection coefficient, and surface impedance of the underwater coating.
+Fig. 4. The real and imaginary parts of the equivalent longitudinal wave 
+modulus of each layer of the underwater coating.
+N. Gao et al.                                                                                                                                                                                                                                     
+Results in Engineering 25 (2025) 104163 
+5 
+
+
+=== PAGE 6 ===
+structure were close to the purple dashed line, the sound energy could 
+relatively easily enter the underwater coating, and the corresponding 
+sound absorption coefficient was the highest, whereas the reflection 
+coefficient was the lowest.
+The real and imaginary parts of the equivalent longitudinal wave 
+bulk modulus and equivalent sound velocity were calculated for each 
+layer of the underwater coating, as shown in Figs. 4 and 5. Due to the 
+presence of a hollow portion, the real parts of the equivalent bulk 
+modulus and equivalent sound velocity decreased in the hollow portion, 
+whereas the imaginary parts increased. Next, the absolute value of the 
+equivalent sound velocity was calculated for each layer of the under­
+water coating. The calculation results are shown in Table 3, where it can 
+be seen that the absolute value of the equivalent sound velocity was the 
+smallest in the hollow part. It can be further seen from Fig. 5 that both 
+the real and imaginary parts of the equivalent sound velocity are smaller 
+than the sound velocity in water. The equivalent sound velocity depends 
+on Eqs. (9)–(11), mainly because underwater coating is a loss medium 
+for underwater sound waves, however in underwater coating, the in­
+crease in perforation rate reduces the equivalent sound velocity. 
+Therefore, for coatings with viscoelastic damping mechanical properties 
+of the substrate material, the decrease in equivalent sound velocity 
+means that the propagation distance and edge length of the sound wave 
+in the coating will increase the loss, which is also the physical essence of 
+underwater sound absorption.
+Further, a sample database containing 16 sensitive geometric pa­
+rameters and four sensitive material parameters directly affecting the 
+sound absorption performance was constructed. These sensitive pa­
+rameters included: (1) the thickness of each of the 10 layers in the un­
+derwater coating di, which was 1 mm ≤di ≤20 mm, where 1 ≤i ≤10; 
+(2) the diameter of the hollow part mi, which satisfied the condition of 
+20 mm ≤mi ≤1980 mm, where i = 2, 3, 5, 6, 8, 9; (3) density ρ, which 
+was 1E3 kg/m3 ≤ρ ≤1.5E3 kg/m3; (4) loss η, which satisfied the con­
+dition of 0.1 ≤η ≤0.8; (5) Young’s modulus E, which was 1E7(1+ηi) Pa 
+≤E ≤1E8(1+ηi) Pa; (6) Poisson’s ratio ν, which satisfied the condition 
+of 0.4 ≤ν ≤0.49. A database sample within the frequency range of 1 
+Hz–1000 Hz was established based on variables corresponding sensitive 
+parameters. The more evenly distributed the data in the database were, 
+the larger the range of data and the higher the accuracy of prediction 
+were. For frequencies ranging from 1 Hz to 1000 Hz, 20 sensitive pa­
+rameters in each group corresponded to a sound absorption curve. In 
+addition, 100,000 different sound absorption curves were constructed, 
+and the selection method for data establishment adopted the Latin hy­
+percube sampling (LHS) method, which is a commonly used random 
+stratified sampling method in multivariate parameter distributions. The 
+distribution of 100,000 sets of row data is displayed in Fig. 6. Since it 
+was challenging to achieve a sound absorption coefficient above 0.8 at 
+frequencies of below 400 Hz, this study used the dataset in Fig. 6 for 
+deep learning training.
+3. Deep learning-based framework and method
+The average value of 100,000 absorption coefficient curves was 
+calculated, and 20 sensitive parameters were predicted based on the 
+randomly selected average absorption coefficient. The frequency was 
+specified to be in the range of 1 Hz–1000 Hz. The method of training the 
+sample database adopted the DNN introduced in [4], which can be 
+regarded as a mapping function between the input data and corre­
+sponding output data. In this study, DNNs were used to estimate the 
+corresponding sensitive parameters that could meet performance re­
+quirements from a selected average sound absorption coefficient. 
+Typically, before data are fed to a deep learning model’s input layer, it is 
+necessary to normalize both the input and output data to accelerate the 
+convergence speed of the model and improve network stability. After 
+feeding the normalized input data to the model’s input, the network 
+provided the predicted normalized output; then, the inverse normali­
+zation was performed to obtain the non-normalized estimated value of 
+the output data. It should be noted that the network input was the 
+average sound absorption coefficient, whose value was from zero to one, 
+so normalization was not necessary for these data; therefore, only the 
+network output data, namely the structural parameters, were normal­
+ized using the min-max normalization method, which maps data of 
+different dimensions to the numerical range of [0,1].
+Assume that the model’s normalized input data were denoted by α, 
+the corresponding normalized true sensitive parameter data were 
+denoted by sn, and the mapped neural network model was defined by 
+f(⋅); then, the data mapping process could be simply expressed as sn =
+f(α). For such types of mapping tasks, feed-forward, fully connected 
+neural networks, which are also known as multi-layer perceptrons or 
+directly referred to as DNNs, are commonly used. The DNNs are typically 
+Fig. 5. The real and imaginary parts of the equivalent sound velocity of each 
+layer of the underwater coating.
+Table 3 
+The absolute value of the equivalent sound velocity of each layer of the underwater coating expressed in m s-1.
+Layer 1
+Layer 2
+Layer 3
+Layer 4
+Layer 5
+Layer 6
+Layer 7
+Layer 8
+Layer 9
+Layer 10
+348.34
+316.12
+316.12
+348.34
+316.12
+316.12
+348.34
+316.12
+316.12
+348.34
+Fig. 6. The preselected 100,000 representative sound absorption curves from 
+the sample database.
+N. Gao et al.                                                                                                                                                                                                                                     
+Results in Engineering 25 (2025) 104163 
+6 
+
+
+=== PAGE 7 ===
+multi-layered structures, where each layer consists of a certain number 
+of interconnected neurons, and each neuron is essentially composed of a 
+linear transformation and a nonlinear activation function. In the DNN 
+structure, there are generally three types of layers: input, output, and 
+hidden layers; the hidden layers are in the middle of the network be­
+tween the input and output layers. The number of hidden layers and the 
+number of nodes in them defined the modeling ability and complexity of 
+a DNN network. For the jth hidden layer hj, whose input is denoted by x, 
+the input-output data mapping process can be expressed by: 
+hj(x) = σ
+(
+wjx + bj)
+,
+(15a) 
+where wj and bj are the weights and biases of the hidden layer, respec­
+tively; σ is a nonlinear activation function.
+The network structure used in this study is presented in Table 4. The 
+entire network consisted of five fully connected layers, where the first 
+four layers contained 128 neurons and had the LeakyReLU activation 
+function defined by: 
+σ(x) =
+{
+x, x ≥0,
+θx, x < 0
+(16a) 
+Usually, parameter θ has a value of 0.01. The last hidden layer 
+consisted of 20 neurons, and the normalized output values of the sen­
+sitive parameters corresponded to their respective outputs. The activa­
+tion function of this layer was Sigmoid, which was defined as: 
+σ(x) =
+1
+1 + e−x,
+(17) 
+The loss function of network optimization was the mean square error 
+(MSE), and it was calculated using the sensitive parameters ̂sn predicted 
+by the network and their corresponding true values sn as follows: 
+Ls = 1
+M
+∑
+M
+i=1
+(sni −̂sni)2,
+(18) 
+Since materials with different sensitive parameters might correspond 
+to the same average sound absorption coefficient, inputting a set of 
+performance parameters in the reverse design might correspond to 
+multiple sensitive parameters, which could prevent DNNs from 
+obtaining optimal results. Therefore, this study introduced additional 
+constraints to the DNN model. In addition, from the perspective of the 
+loss function, it was expected the network would provide sensitive pa­
+rameters that could comply with the performance parameters, and only 
+the MSE loss of the sensitive parameters was used to optimize the neural 
+network to prevent inconsistency with the optimization direction of the 
+expected performance parameters. Therefore, to the above loss function, 
+this study added an additional constraint term, as shown in Fig. 7. The 
+PyTorch version was used to calculate the average sound absorption 
+coefficient corresponding to the geometric structure parameters pre­
+dicted by the DNN model. In addition, the expected average sound ab­
+sorption coefficient was determined, and its mean square error was 
+calculated as follows: 
+Lα = 1
+M
+∑
+M
+i=1
+(αi −αiʹ),
+(19) 
+The total loss function was expressed by: 
+L = Ls + Lα,
+(20) 
+4. Prediction results and verification
+After training the DNN model using the sample database constructed 
+in this study, we randomly generated two curves with different varia­
+tions, both within the prediction frequency range of 1–1000 Hz, as 
+shown in Fig. 8.The curve characteristics of case 1 are continuously 
+Table 4 
+The parameters of the DNN model used in this study.
+Network input
+Normalized input data (average sound absorption coefficient 
+α)
+Network 
+structure
+128 fully connected layer - LeakyReLU
+128 fully connected layer - LeakyReLU
+128 fully connected layer - LeakyReLU
+128 fully connected layer - LeakyReLU
+20 fully connected layer - Sigmoid
+Network output
+Normalized sensitive parameters (20 in total)
+Fig. 7. The flow diagram of the DNN with the MSE loss.
+Fig. 8. The two randomly selected absorption coefficient curves.
+N. Gao et al.                                                                                                                                                                                                                                     
+Results in Engineering 25 (2025) 104163 
+7 
+
+
+=== PAGE 8 ===
+increasing from 1 Hz, while the curve characteristics of case 2 are both 
+increasing and decreasing within the predicted frequency range, and 
+neither of these curves belong to the curves in the database in Fig. 6. The 
+distributions of the two absorption curves did not exceed the envelope of 
+the sample database presented in Fig. 6. The sound absorption co­
+efficients corresponding to the two curves were 0.614751 and 0.663840, 
+as indicated by the dashed lines in Fig. 8. The two average absorption 
+coefficients were input into the neural network of Section 3, and the 
+above method was used for prediction to obtain two predicted absorp­
+tion coefficient curves and the corresponding 20 sensitive parameters. 
+The average values of the predicted sound absorption coefficient curves 
+were 0.614912 and 0.661605, with relative errors of 0.026 % and 0.33 
+%, respectively. Their distributions and errors are shown in Fig. 9a and 
+b. Obviously, the reliability of the prediction results was very high. The 
+20 sensitive parameters corresponding to the predicted average sound 
+absorption coefficient, achieve very high accuracy to ten decimal places, 
+and are all listed in Table 5.
+5. Conclusion
+This study introduces a DNN model with an improved loss function 
+for predicting an average absorption coefficient curve. The overall loss 
+function of the DNN model includes the original loss function aided with 
+the MSE-based loss function. The MSE value is calculated between the 
+expected average absorption coefficient and its predicted value, tar­
+geting the 100,000 randomly generated absorption coefficient curves in 
+the theoretical acoustic performance calculation model of underwater 
+coating; this represents a sample database constructed using 20 sensitive 
+parameters, including 16 geometric parameters and four material pa­
+rameters. Considering that inputting a set of performance parameters in 
+the development framework might correspond to multiple sets of 20 
+sensitive parameters, using the original loss function could prevent 
+DNNs from obtaining optimal results. Therefore, the on-demand design 
+presented in this paper adds additional constraints to the DNN model to 
+determine whether it can achieve the best unique results. By performing 
+the prediction tests for two randomly selected absorption coefficient 
+curves, the effectiveness of the proposed method is verified, demon­
+strating very small errors of 0.026 % and 0.33 %. The work presented in 
+this article could provide a valuable reference for accelerating the per­
+formance design of underwater acoustic materials.
+CRediT authorship contribution statement
+Nansha Gao: Writing – review & editing, Writing – original draft, 
+Supervision, Software, Methodology, Investigation, Funding acquisi­
+tion, Formal analysis, Data curation, Conceptualization. Mou Wang: 
+Software, Resources, Formal analysis. Xiao Liang: Methodology. Guang 
+Pan: Visualization, Validation.
+Declaration of competing interest
+The authors declare that they have no known competing financial 
+interests or personal relationships that could have appeared to influence 
+the work reported in this study.
+Acknowledgments
+This study was supported by National Natural Science Foundation of 
+China (Grant Nos. 11704314 and 52171323), and the China Post­
+doctoral Science Foundation (Grant No. 2018M631194).
+Data availability
+Data will be made available on request.
+Fig. 9. Relative error between original and predicted average sound absorption coefficients.
+Table 5 
+The prediction results of the 20 sensitivity parameters of the average value of the 
+predicted sound absorption curve.
+Prediction results for Case 1
+d1 (mm)
+10.7398927211761
+d2 (mm)
+9.19723930954933
+d3 (mm)
+9.03188413381577
+d4 (mm)
+10.3210442066193
+d5 (mm)
+9.02042958140373
+d6 (mm)
+9.03090962767601
+d7 (mm)
+10.1851529777050
+d8 (mm)
+9.20814347267151
+d9 (mm)
+9.10563176870346
+d10 (mm)
+10.3094107210636
+m2 (mm)
+353.101807236671
+m3 (mm)
+354.557039141655
+m5 (mm)
+371.865028738976
+m6 (mm)
+382.696526646614
+m8 (mm)
+404.766833186150
+m9 (mm)
+400.110272169113
+ρ (kg/m3)
+1268.43154430389
+η
+0.758901304006577
+E (Pa)
+8.49030417203903E7(1+ηi)
+ν
+0.476384522914887
+Prediction results for Case 2
+d1 (mm)
+10.4116438329220
+d2 (mm)
+9.59269911050797
+d3 (mm)
+9.48593208193779
+d4 (mm)
+10.2778358161449
+d5 (mm)
+9.56153133511543
+d6 (mm)
+9.52644741535187
+d7 (mm)
+10.2548802793026
+d8 (mm)
+9.57734596729279
+d9 (mm)
+9.54049196839333
+d10 (mm)
+10.3517957925797
+m2 (mm)
+422.048478722572
+m3 (mm)
+415.016191601753
+m5 (mm)
+421.283624768257
+m6 (mm)
+428.282207846642
+m8 (mm)
+437.154577970505
+m9 (mm)
+433.320407271385
+ρ (kg/m3)
+1254.90951538086
+η
+0.700865012407303
+E (Pa)
+7.96552193164825E7(1+ηi)
+ν
+0.472864060401917
+N. Gao et al.                                                                                                                                                                                                                                     
+Results in Engineering 25 (2025) 104163 
+8 
+
+
+=== PAGE 9 ===
+References
+[1] S.A. Cummer, J. Christensen, A. Alu, Controlling sound with acoustic 
+metamaterials, Nat. Rev. Mater. 1 (3) (2016) 1–13.
+[2] M. Yang, P. Sheng, Sound absorption structures From porous media to acoustic 
+metamaterials, Annu. Rev. Mater. Res. 47 (1) (2017) 83–114.
+[3] N.S. Gao, Z.C. Zhang, J. Deng, X. Guo, B.Z. Cheng, H. Hou, Acoustic metamaterials 
+for noise reduction a review, Adv. Mater. Technol. 7 (6) (2022) 2100698.
+[4] J. Kennedy, C.W. Lim, Machine learning and deep learning in phononic crystals 
+and metamaterials–a review, Mater. Today Commun. 33 (2022) 104606.
+[5] G. Cerniauskas, H. Sadia, P. Alam, Machine intelligence in metamaterials design a 
+review, Oxf. Open. Mater. Sci. 4 (1) (2024) itae001.
+[6] D. Yago, G. Sal-Anglada, D. Roca, J. Cante, J. Oliver, Machine learning in solid 
+mechanics Application to acoustic metamaterial design, Int. J. Numer. Meth Eng 
+125 (14) (2024) e7476.
+[7] L. Liu, L. Xie, W. Huang, X.J. Zhang, M.H. Lu, Y.F. Chen, Broadband acoustic 
+absorbing metamaterial via deep learning approach, Appl. Phys. Lett. 120 (25) 
+(2022) 251701.
+[8] A. Mehrish, N. Majumder, R. Bharadwaj, R. Mihalcea, S. Poria, A review of deep 
+learning techniques for speech processing, Inform. Fusion 99 (2023) 101869.
+[9] A. Voulodimos, N. Doulamis, A. Doulamis, E. Protopapadakis, Deep learning for 
+computer vision A brief review, Comput. Intel. Neurosc. 2018 (1) (2018) 7068349.
+[10] D.W. Otter, J.R. Medina, J.K. Kalita, A survey of the usages of deep learning for 
+natural language processing, Ieee. T. Neur. Net. Lear. 32 (2) (2020) 604–624.
+[11] A. Esteva, A. Robicquet, B. Ramsundar, V. Kuleshov, M. DePristo, K. Chou, C. Cui, 
+G. Corrado, S. Thrun, J. Dean, A guide to deep learning in healthcare, Nat. Med. 25 
+(1) (2019) 24–29.
+[12] S. Hiremath, Y. Zhang, L. Zhang, T.W. Kim, Machine learning approach to 
+evaluating impact behavior in fabric-laminated composite materials, Results Eng. 
+23 (2024) 102576.
+[13] N. Munir, J.Y. Huang, C.N. Wong, S.J. Song, Machine learning based eddy current 
+testing: a review, Results Eng. 25 (2025) 103724.
+[14] Y.Q. Li, X. Zhu, F. Xu, Research for predicting the underwater acoustic performance 
+of sandwich structural composite based on support vector machine, Adv. Mater. 
+Res. 308 (2011) 678–684.
+[15] C.W. Kang, K. Hashitsume, H. Kolya, A resonator installed in a wooden puzzle 
+board greatly enhances sound absorption capability at low frequency: a new 
+approach, Results Eng. 17 (2023) 101021.
+[16] F. Fantoni, A. Bacigalupo, G. Gnecco, L. Gambarotta, Multi-objective optimal 
+design of mechanical metafilters based on principal component analysis, Int. J. 
+Mech. Sci. 248 (2023) 108195.
+[17] X. Sun, H. Jia, Z. Zhang, Y. Yang, Z. Sun, J. Yang, Sound localization and separation 
+in 3D space using a single microphone with a metamaterial enclosure, Adv. Sci. 7 
+(3) (2020) 1902271.
+[18] S. Kang, H. Song, H.S. Kang, B.S. Bae, S. Ryu, Customizable metamaterial design 
+for desired strain-dependent Poisson’s ratio using constrained generative inverse 
+design network, Mater. Des. 247 (2024) 113377.
+[19] T. Shah, L. Zhuo, P. Lai, D. La. Rosa-Moreno, F. Amirkulova, P. Gerstoft, 
+Reinforcement learning applied to metamaterial design, J. Acoust. Soc. Am. 150 
+(1) (2021) 321–338.
+[20] R.T. Wu, T.W. Liu, M.R. Jahanshahi, F. Semperlotti, Design of one-dimensional 
+acoustic metamaterials using machine learning and cell concatenation, Struct. 
+Multidiscip. O. 63 (2021) 2399–2423.
+[21] R. Wu, Development and application of big data analytics and artificial intelligence 
+for structural health monitoring and metamaterial design, ProQuest Dissertations 
+Theses Full-text Search Platform (2020).
+[22] L.W. Zhuo, Acoustic cloak design using generative modeling and reinforcement 
+learning, ProQuest Dissertations Theses Full-text Search Platform (2022).
+[23] J. Weng, Y. Ding, C. Hu, X.F. Zhu, B. Liang, J. Yang, J. Cheng, Meta-neural-network 
+for real-time and passive deep-learning-based object recognition, Nat. Commun. 11 
+(1) (2020) 6309.
+[24] B. Orazbayev, R. Fleury, Far-field subwavelength acoustic imaging by deep 
+learning, Phys. Rev. X 10 (3) (2020) 031029.
+[25] L. Liu, L. Xie, W. Huang, X.J. Zhang, M.H. Lu, Y.F. Chen, Broadband acoustic 
+absorbing metamaterial via deep learning approach, Appl. Phys. Lett. 120 (25) 
+(2022) 251701.
+[26] X. Zhang, Q. Yu, C. Zhao, D. Shi, M. Geng, J. Zheng, T. Lu, P. Wang, Modular 
+reverse design of acoustic metamaterial and sound barrier engineering applications 
+High ventilation and broadband sound insulation, Thin Wall. Struct. 196 (2024) 
+111498.
+[27] Z.W. Wang, A. Chen, Z.X. Xu, J. Yang, B. Liang, J.C. Cheng, On-demand inverse 
+design of acoustic metamaterials using probabilistic generation network, SCI. 
+China, Physics 66 (2) (2023) 224311.
+[28] T. Tran, F.A. Amirkulova, E. Khatami, Broadband acoustic metamaterial design via 
+machine learning, J. Theor. Comput. Acous. 30 (03) (2022) 2240005.
+[29] H. Guo, W. Chen, Y. Wang, F. Ma, P. Sun, T. Yuan, X. Xie, Parametric modeling and 
+deep learning-based forward and inverse design for acoustic metamaterial plates, 
+Mech, Adv. Mater. Struc. (2024) 1–11.
+[30] N.S. Gao, W. Mou, B.Z. Cheng, Deep auto-encoder network in predictive design of 
+Helmholtz resonator on-demand prediction of sound absorption peak, Appl. 
+Acoust. 191 (2022) 108680.
+[31] N.S. Gao, M. Wang, B.Z. Cheng, H. Hou, Inverse design and experimental 
+verification of an acoustic sink based on machine learning, Appl. Acoust. 180 
+(2021) 108153.
+[32] P. Lai, F. Amirkulova, P. Gerstoft, Conditional Wasserstein generative adversarial 
+networks applied to acoustic metamaterial design, J. Acoust. Soc. Am. 150 (6) 
+(2021) 4362–4374.
+[33] T. Tran, F.A. Amirkulova, E. Khatami, Broadband acoustic metamaterial design via 
+machine learning, J. Theor. Comput. Acous. 30 (03) (2022) 2240005.
+[34] C. Song, X. Wang, S. Xu, C. Zhao, Z. Huang, Inverse design of laminated plate-type 
+acoustic metamaterials for sound insulation based on deep learning, Appl. Acoust. 
+218 (2024) 109906.
+[35] K. Donda, Y. Zhu, A. Merkel, S.W. Fan, L. Cao, S. Wan, B. Assouar, Ultrathin 
+acoustic absorbing metasurface based on deep learning approach, Smart. Mater. 
+Struct. 30 (8) (2021) 085003.
+[36] K. Mahesh, S. Kumar Ranjith, R.S. Mini, Inverse design of a Helmholtz resonator 
+based low-frequency acoustic absorber using deep neural network, J. Appl. Phys. 
+129 (17) (2021) 174901.
+[37] A. Chen, Z.X. Xu, B. Zheng, J. Yang, B. Liang, J. Cheng, Machine learning-assisted 
+low-frequency and broadband sound absorber with coherently coupled weak 
+resonances, Appl. Phys. Lett. 120 (3) (2022) 033501.
+[38] J. Gu, Q. Zhao, B. Yin, H. Zhou, S. Qu, Lowering the sound transmission loss of 
+impedance-matching structures data-driven optimization assisted with a priori 
+knowledge, Mater. Des. 232 (2023) 112091.
+[39] H. Weeratunge, Z. Shireen, S. Iyer, A. Menzel, A. Phillips, S. Halgamuge, 
+R. Sandberg, E. Hajizadeh, A machine learning accelerated inverse design of 
+underwater acoustic polyurethane coatings, Struct. Multidiscip. O. 65 (8) (2022) 
+213.
+[40] COMSOL Multiphysics® v. 6.2, COMSOL lnc, Stockholm, Sweden, 2024.
+[41] N.S. Gao, Y.Y. Zhang, A low frequency underwater metastructure composed by 
+helix metal and viscoelastic damping rubber, J. Vib. Control. 25 (2019) 538–548.
+N. Gao et al.                                                                                                                                                                                                                                     
+Results in Engineering 25 (2025) 104163 
+9 
+
+
