@@ -11,25 +11,38 @@ import os
 import time
 import pickle
 import math
+import random
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore")
 
 # ==========================================
+# SEED CONTROL FOR REPRODUCIBILITY
+# ==========================================
+def set_seed(seed=42):
+    """
+    Set random seeds for reproducibility across all libraries.
+    """
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    print(f"✓ Global seed set to {seed} for reproducibility")
+
+# ==========================================
 # PARAMETER CONSTRAINTS
 # ==========================================
 PARAM_RANGES = {
-    # Layer thicknesses d1-d10 (mm)
     'd1': (1.0, 20.0), 'd2': (1.0, 20.0), 'd3': (1.0, 20.0), 'd4': (1.0, 20.0), 'd5': (1.0, 20.0),
     'd6': (1.0, 20.0), 'd7': (1.0, 20.0), 'd8': (1.0, 20.0), 'd9': (1.0, 20.0), 'd10': (1.0, 20.0),
-    # Hollow diameters m2, m3, m5, m6, m8, m9 (mm)
     'm2': (20.0, 1980.0), 'm3': (20.0, 1980.0), 'm5': (20.0, 1980.0),
     'm6': (20.0, 1980.0), 'm8': (20.0, 1980.0), 'm9': (20.0, 1980.0),
-    # Material properties
-    'rho': (1000.0, 1500.0),      # Density (kg/m³)
-    'eta': (0.1, 0.8),             # Loss factor
-    'E': (1e7, 1e8),               # Young's modulus (Pa) - will adjust based on eta
-    'nu': (0.4, 0.49)              # Poisson's ratio
+    'rho': (1000.0, 1500.0),
+    'eta': (0.1, 0.8),
+    'E': (1e7, 1e8),
+    'nu': (0.4, 0.49)
 }
 
 def get_param_bounds():
@@ -47,14 +60,11 @@ def validate_and_clip_parameters(params):
     """
     lower_bounds, upper_bounds = get_param_bounds()
     
-    # Clip all parameters to their basic ranges
     clipped = np.clip(params, lower_bounds, upper_bounds)
     
-    # Special handling for Young's modulus E based on eta
-    eta_values = clipped[:, 17]  # eta is at index 17
-    E_values = clipped[:, 18]    # E is at index 18
+    eta_values = clipped[:, 17]
+    E_values = clipped[:, 18]
     
-    # Enforce E constraint: 1E7(1+eta) <= E <= 1E8(1+eta)
     E_min = 1e7 * (1 + eta_values)
     E_max = 1e8 * (1 + eta_values)
     clipped[:, 18] = np.clip(E_values, E_min, E_max)
@@ -62,16 +72,14 @@ def validate_and_clip_parameters(params):
     return clipped
 
 # ==========================================
-# 1. PHYSICS ENGINE (Transfer Matrix Method) - OPTIMIZED
+# 1. PHYSICS ENGINE (Transfer Matrix Method)
 # ==========================================
 def calculate_absorption_tmm_batch(param_matrix, reduced_freq=False, chunk_size=500):
     """
     Calculates average absorption for a batch of parameters using TMM.
-    HIGHLY OPTIMIZED VERSION with chunking.
     """
     N = param_matrix.shape[0]
     
-    # Process in chunks if N is large
     if N > chunk_size:
         results = []
         for i in range(0, N, chunk_size):
@@ -84,59 +92,47 @@ def calculate_absorption_tmm_batch(param_matrix, reduced_freq=False, chunk_size=
             results.append(chunk_result)
         return np.concatenate(results)
 
-    # Constants (SI Units)
-    W = 2000.0 / 1000.0 # Width in meters
+    W = 2000.0 / 1000.0
     rho_w, c_w = 1000.0, 1500.0
     Z_w = rho_w * c_w
     
-    # Vectorize frequencies
     if reduced_freq:
-        frequencies = np.arange(1, 1001, 50) # Faster for training
+        frequencies = np.arange(1, 1001, 50)
     else:
-        frequencies = np.arange(1, 1001, 1)  # Full resolution for testing
+        frequencies = np.arange(1, 1001, 1)
         
-    omega = 2 * np.pi * frequencies  # Shape: (num_freq,)
+    omega = 2 * np.pi * frequencies
     num_freq = len(frequencies)
     
-    # Layer mapping
     hollow_layer_indices = np.array([1, 2, 4, 5, 7, 8])
     
-    # Extract parameters
-    d_vals = param_matrix[:, 0:10] / 1000.0  # (N, 10) in meters
-    m_vals = param_matrix[:, 10:16] / 1000.0  # (N, 6) in meters
-    rho_r = param_matrix[:, 16:17]  # (N, 1)
-    eta = param_matrix[:, 17:18]    # (N, 1)
-    E_r = param_matrix[:, 18:19]    # (N, 1)
-    nu = param_matrix[:, 19:20]     # (N, 1)
+    d_vals = param_matrix[:, 0:10] / 1000.0
+    m_vals = param_matrix[:, 10:16] / 1000.0
+    rho_r = param_matrix[:, 16:17]
+    eta = param_matrix[:, 17:18]
+    E_r = param_matrix[:, 18:19]
+    nu = param_matrix[:, 19:20]
     
-    # Complex Modulus
-    E_c = E_r * (1 + 1j * eta)  # (N, 1)
+    E_c = E_r * (1 + 1j * eta)
     
-    # Lame Constants
-    lam = (E_c * nu) / ((1 + nu) * (1 - 2 * nu))  # (N, 1)
-    mu = E_c / (2 * (1 + nu))  # (N, 1)
+    lam = (E_c * nu) / ((1 + nu) * (1 - 2 * nu))
+    mu = E_c / (2 * (1 + nu))
     
-    # Initialize transfer matrices
     T_total = np.tile(np.eye(2, dtype=complex), (N, num_freq, 1, 1))
     
-    # Process all 10 layers
     for lay_idx in range(10):
         d = d_vals[:, lay_idx:lay_idx+1]
         
-        # Check if hollow
         eps = np.zeros((N, 1))
         if lay_idx in hollow_layer_indices:
             m_ptr = np.where(hollow_layer_indices == lay_idx)[0][0]
             eps = m_vals[:, m_ptr:m_ptr+1] / W
         
-        # Equivalent Medium Theory (EMT)
         rho_eff = rho_r * (1 - eps**2)
         
-        # Bulk Modulus Equation
         numerator = (mu * (lam + 2*mu) * (eps**2 + 1)) + (2 * (eps**2) * lam)
         denominator = ((lam + mu) * eps**2) + mu
         
-        # Handle division by zero
         mask = np.abs(denominator) < 1e-15
         S_eff = np.where(mask, numerator * 1e15, numerator / denominator)
         
@@ -144,7 +140,6 @@ def calculate_absorption_tmm_batch(param_matrix, reduced_freq=False, chunk_size=
         k_eff = omega[np.newaxis, :] / c_eff
         Z_eff = rho_eff * c_eff
         
-        # Transfer Matrix
         cos_kd = np.cos(k_eff * d)
         sin_kd = np.sin(k_eff * d)
         
@@ -161,7 +156,6 @@ def calculate_absorption_tmm_batch(param_matrix, reduced_freq=False, chunk_size=
         
         T_total = np.matmul(T_total, T_i)
     
-    # Reflection Coefficient
     T11 = T_total[:, :, 0, 0]
     T21 = T_total[:, :, 1, 0]
     
@@ -174,25 +168,20 @@ def calculate_absorption_tmm_batch(param_matrix, reduced_freq=False, chunk_size=
     alpha = 1 - np.abs(R)**2
     alpha = np.clip(alpha.real, 0.0, 1.0)
     
-    # Average across frequencies
     results = np.mean(alpha, axis=1)
     
     return results
 
 # ==========================================
-# 2. DIFFUSION MODEL ARCHITECTURE (UPGRADED)
+# 2. DIFFUSION MODEL ARCHITECTURE
 # ==========================================
 
 class SinusoidalPositionEmbeddings(nn.Module):
-    """
-    Standard Transformer-style time embeddings.
-    """
     def __init__(self, dim):
         super().__init__()
         self.dim = dim
 
     def forward(self, time):
-        # time: [Batch_Size, 1]
         device = time.device
         half_dim = self.dim // 2
         embeddings = math.log(10000) / (half_dim - 1)
@@ -202,51 +191,37 @@ class SinusoidalPositionEmbeddings(nn.Module):
         return embeddings
 
 class FiLMBlock(nn.Module):
-    """
-    A Residual Block that modulates features based on Time and Condition (FiLM).
-    """
     def __init__(self, hidden_dim, cond_dim):
         super().__init__()
         
-        # Main processing path
         self.fc1 = nn.Linear(hidden_dim, hidden_dim)
         self.norm = nn.LayerNorm(hidden_dim)
-        self.act = nn.SiLU() # Swish activation
+        self.act = nn.SiLU()
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
         self.dropout = nn.Dropout(0.1)
         
-        # FiLM Layer: Generates Scale (gamma) and Shift (beta) from condition
         self.film_gen = nn.Linear(cond_dim, hidden_dim * 2)
 
     def forward(self, x, condition_emb):
         residual = x
         
-        # 1. Main Path
         x = self.fc1(x)
         x = self.norm(x)
         
-        # 2. FiLM Modulation
-        # Predict scale and shift based on Target Absorption & Time
         scale, shift = self.film_gen(self.act(condition_emb)).chunk(2, dim=1)
         
-        # Apply Modulation: x = x * (1 + scale) + shift
         x = x * (1 + scale) + shift
         
         x = self.act(x)
         x = self.dropout(x)
         x = self.fc2(x)
         
-        # 3. Skip Connection
         return x + residual
 
 class ConditionalDiffusionNet(nn.Module):
-    """
-    Upgraded Network with FiLM, Sinusoidal Embeddings, and Zero-Init.
-    """
     def __init__(self, param_dim=20, cond_dim=1, hidden_dim=512):
         super().__init__()
         
-        # 1. Time Embedding (Sinusoidal)
         self.time_mlp = nn.Sequential(
             SinusoidalPositionEmbeddings(hidden_dim),
             nn.Linear(hidden_dim, hidden_dim),
@@ -254,54 +229,39 @@ class ConditionalDiffusionNet(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
         )
         
-        # 2. Condition Embedding (Target Absorption)
         self.cond_mlp = nn.Sequential(
             nn.Linear(cond_dim, hidden_dim),
             nn.SiLU(),
             nn.Linear(hidden_dim, hidden_dim),
         )
         
-        # 3. Input Projection
         self.input_proj = nn.Linear(param_dim, hidden_dim)
         
-        # 4. Deep Backbone with FiLM
-        # We increase depth to 4 blocks and use FiLM
         self.block1 = FiLMBlock(hidden_dim, hidden_dim) 
         self.block2 = FiLMBlock(hidden_dim, hidden_dim)
         self.block3 = FiLMBlock(hidden_dim, hidden_dim)
         self.block4 = FiLMBlock(hidden_dim, hidden_dim)
         
-        # 5. Output Projection
         self.final_norm = nn.LayerNorm(hidden_dim)
         self.final_act = nn.SiLU()
         self.output_proj = nn.Linear(hidden_dim, param_dim)
         
-        # Zero-init the final layer (Best practice for diffusion)
         nn.init.zeros_(self.output_proj.weight)
         nn.init.zeros_(self.output_proj.bias)
 
     def forward(self, x, t, cond):
-        # x: [B, 20]
-        # t: [B, 1]
-        # cond: [B, 1]
-        
-        # Embed Time and Condition
         t_emb = self.time_mlp(t)
         c_emb = self.cond_mlp(cond)
         
-        # Combine them (Add)
         global_cond = t_emb + c_emb 
         
-        # Process Input
         h = self.input_proj(x)
         
-        # Pass through FiLM Blocks
         h = self.block1(h, global_cond)
         h = self.block2(h, global_cond)
         h = self.block3(h, global_cond)
         h = self.block4(h, global_cond)
         
-        # Final Output
         h = self.final_norm(h)
         h = self.final_act(h)
         out = self.output_proj(h)
@@ -309,15 +269,11 @@ class ConditionalDiffusionNet(nn.Module):
         return out
 
 class DiffusionModel:
-    """
-    Manages the forward (noise) and reverse (denoise) diffusion processes.
-    """
     def __init__(self, network, num_timesteps=100, device='cpu'):
         self.net = network.to(device)
         self.num_timesteps = num_timesteps
         self.device = device
         
-        # Define Noise Schedule (Beta Schedule)
         self.betas = torch.linspace(1e-4, 0.02, num_timesteps).to(device)
         self.alphas = 1 - self.betas
         self.alpha_bars = torch.cumprod(self.alphas, dim=0)
@@ -325,23 +281,15 @@ class DiffusionModel:
     def train_step(self, x0, cond, optimizer):
         batch_size = x0.shape[0]
         
-        # 1. Sample random time steps 't'
         t = torch.randint(0, self.num_timesteps, (batch_size, 1), device=self.device).float()
         
-        # 2. Generate random noise 'epsilon'
         epsilon = torch.randn_like(x0)
         
-        # 3. Add noise to x0
         alpha_bar_t = self.alpha_bars[t.long().squeeze()].unsqueeze(1)
         xt = torch.sqrt(alpha_bar_t) * x0 + torch.sqrt(1 - alpha_bar_t) * epsilon
         
-        # 4. Predict the noise
-        # Note: We pass raw 't' (not normalized) because SinusoidalEmbedding handles it
-        # But for consistency with embedding range, we keep it as is or normalize
-        # Sinusoidal expects raw steps usually, but float input works too.
         eps_pred = self.net(xt, t, cond)
         
-        # 5. Calculate Loss
         loss = nn.MSELoss()(eps_pred, epsilon)
         
         optimizer.zero_grad()
@@ -371,20 +319,20 @@ class DiffusionModel:
         return val_loss / len(dataloader)
     
     @torch.no_grad()
-    def sample(self, cond, scaler=None):
-        """
-        Generates samples from pure noise.
-        """
+    def sample(self, cond, scaler=None, seed=None):
+        if seed is not None:
+            torch.manual_seed(seed)
+            if self.device.type == 'cuda':
+                torch.cuda.manual_seed(seed)
+        
         batch_size = cond.shape[0]
         x = torch.randn(batch_size, 20, device=self.device)
         
         for i in reversed(range(self.num_timesteps)):
             t = torch.full((batch_size, 1), i, device=self.device).float()
             
-            # Predict noise
             eps_pred = self.net(x, t, cond)
             
-            # Calculate mean
             beta_t = self.betas[i]
             alpha_t = self.alphas[i]
             alpha_bar_t = self.alpha_bars[i]
@@ -398,7 +346,6 @@ class DiffusionModel:
             std = torch.sqrt(beta_t)
             x = mean + std * noise
             
-            # Constraints during sampling
             if i % 10 == 0 and scaler is not None:
                 x_original = scaler.inverse_transform(x.cpu().numpy())
                 x_constrained = validate_and_clip_parameters(x_original)
@@ -437,7 +384,6 @@ def load_model(filepath='diffusion_model_film_v2.pth', device='cpu'):
     
     checkpoint = torch.load(filepath, map_location=device)
     
-    # Initialize updated Network with FiLM
     net = ConditionalDiffusionNet(hidden_dim=512).to(device)
     net.load_state_dict(checkpoint['model_state_dict'])
     
@@ -451,12 +397,21 @@ def load_model(filepath='diffusion_model_film_v2.pth', device='cpu'):
     return diffusion, scaler_x
 
 # ==========================================
-# 4. COMPREHENSIVE TESTING
+# 4. COMPREHENSIVE TESTING WITH CSV EXPORT
 # ==========================================
-def comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, num_candidates=10):
+def comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, num_candidates=10, seed=42, output_csv='test_predictions.csv'):
+    """
+    Comprehensive testing with CSV export of predictions.
+    """
+    torch.manual_seed(seed)
+    if device.type == 'cuda':
+        torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
+    
     print("\n" + "="*70)
     print("COMPREHENSIVE TESTING ON ENTIRE TEST SET")
     print("="*70)
+    print(f"Using seed={seed} for reproducible results")
     
     N_test = len(X_test_norm)
     print(f"\nTest samples: {N_test}")
@@ -468,7 +423,7 @@ def comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, num_can
     start_time = time.time()
     
     with torch.no_grad():
-        generated_norm = diffusion.sample(targets_batch, scaler=scaler_x)
+        generated_norm = diffusion.sample(targets_batch, scaler=scaler_x, seed=seed)
     
     generation_time = time.time() - start_time
     print(f"✓ Generation completed in {generation_time:.2f}s")
@@ -506,6 +461,17 @@ def comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, num_can
     final_errors = np.array(final_errors) * 100 
     best_predictions = np.array(best_predictions)
     best_designs = np.array(best_designs)
+    
+    # Save to CSV
+    param_names = ['d1','d2','d3','d4','d5','d6','d7','d8','d9','d10',
+                   'm2','m3','m5','m6','m8','m9','rho','eta','E','nu']
+    
+    df_results = pd.DataFrame(best_designs, columns=param_names)
+    df_results['Calculated_Absorption'] = best_predictions
+    df_results['Target_Absorption'] = targets_reshaped.flatten()
+    
+    df_results.to_csv(output_csv, index=False)
+    print(f"\n✓ Test predictions saved to: {output_csv}")
     
     avg_error = np.mean(final_errors)
     min_error = np.min(final_errors)
@@ -557,9 +523,6 @@ def comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, num_can
     
     print(f"\nPerformance Rating: {rating}")
     
-    param_names = ['d1','d2','d3','d4','d5','d6','d7','d8','d9','d10',
-                   'm2','m3','m5','m6','m8','m9','rho','eta','E','nu']
-    
     print("\n" + "="*70)
     print("SAMPLE WITH MINIMUM ERROR")
     print("="*70)
@@ -584,7 +547,6 @@ def comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, num_can
         print(f"{name:<10} {best_designs[max_error_idx][i]:>15.4f}")
     print("="*70)
 
-    
     return {
         'avg_error': avg_error,
         'min_error': min_error,
@@ -595,107 +557,39 @@ def comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, num_can
     }
 
 # ==========================================
-# 5. RANDOM SAMPLE PREDICTION - WITH CHUNKING
-# ==========================================
-def predict_random_sample(diffusion, y_test, scaler_x, device, num_candidates=5):
-    print("\n" + "="*70)
-    print("RANDOM SAMPLE PREDICTION")
-    print("="*70)
-    
-    random_idx = np.random.randint(0, len(y_test))
-    target_absorption = y_test[random_idx, 0]
-    
-    print(f"\nRandom Test Sample Index: {random_idx}")
-    print(f"Target Absorption: {target_absorption:.6f}")
-    
-    target_tensor = torch.FloatTensor([[target_absorption]]).repeat(num_candidates, 1).to(device)
-    
-    print(f"\nGenerating {num_candidates} candidate designs...")
-    with torch.no_grad():
-        generated_norm = diffusion.sample(target_tensor, scaler=scaler_x)
-    
-    generated_norm = generated_norm.cpu().numpy()
-    generated_real = scaler_x.inverse_transform(generated_norm)
-    generated_real = validate_and_clip_parameters(generated_real)
-    
-    print("Validating with Physics Engine...")
-    actual_absorptions = calculate_absorption_tmm_batch(generated_real, reduced_freq=False, chunk_size=500)
-    
-    errors = np.abs(actual_absorptions - target_absorption) / (target_absorption + 1e-8) * 100
-    
-    best_idx = np.argmin(errors)
-    best_design = generated_real[best_idx]
-    best_error = errors[best_idx]
-    
-    param_names = ['d1','d2','d3','d4','d5','d6','d7','d8','d9','d10',
-                   'm2','m3','m5','m6','m8','m9','rho','eta','E','nu']
-    
-    print("\n" + "="*70)
-    print(f"ALL {num_candidates} CANDIDATES WITH PREDICTED PARAMETERS")
-    print("="*70)
-    
-    for candidate_idx in range(num_candidates):
-        design = generated_real[candidate_idx]
-        absorption = actual_absorptions[candidate_idx]
-        error = errors[candidate_idx]
-        
-        marker = " ⭐ BEST" if candidate_idx == best_idx else ""
-        print(f"\n{'='*70}")
-        print(f"CANDIDATE {candidate_idx + 1}{marker}")
-        print(f"{'='*70}")
-        print(f"Calculated Absorption: {absorption:.6f}")
-        print(f"Relative Error:        {error:.2f}%")
-        print(f"\n{'Parameter':<10} {'Value':>15}")
-        print("-"*70)
-        for i, name in enumerate(param_names):
-            print(f"{name:<10} {design[i]:>15.4f}")
-    
-    return {
-        'target': target_absorption,
-        'error': best_error
-    }
-
-# ==========================================
 # 5. MANUAL TARGET PREDICTION
 # ==========================================
-def predict_manual_target(diffusion, target_absorption, scaler_x, device, num_candidates=10):
+def predict_manual_target(diffusion, target_absorption, scaler_x, device, num_candidates=10, seed=42):
     """
     Generate design for manually specified absorption target.
-    
-    Args:
-        diffusion: Trained diffusion model
-        target_absorption: Float - Desired absorption coefficient (e.g., 0.75)
-        scaler_x: Scaler for parameters
-        device: Computation device
-        num_candidates: Number of candidates to generate
     """
+    torch.manual_seed(seed)
+    if device.type == 'cuda':
+        torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
+    
     print("\n" + "="*70)
     print("MANUAL TARGET PREDICTION")
     print("="*70)
-    
+    print(f"Using seed={seed} for reproducible prediction")
     print(f"\nTarget Absorption (Manual): {target_absorption:.6f}")
     
-    # Generate candidates
     target_tensor = torch.FloatTensor([[target_absorption]]).repeat(num_candidates, 1).to(device)
     
     print(f"\nGenerating {num_candidates} candidate designs...")
     with torch.no_grad():
-        generated_norm = diffusion.sample(target_tensor, scaler=scaler_x)
+        generated_norm = diffusion.sample(target_tensor, scaler=scaler_x, seed=seed)
     
     generated_norm = generated_norm.cpu().numpy()
     generated_real = scaler_x.inverse_transform(generated_norm)
     
-    # Apply constraints
     generated_real = validate_and_clip_parameters(generated_real)
     
-    # Validate with Physics Engine
     print("Validating with Physics Engine...")
     actual_absorptions = calculate_absorption_tmm_batch(generated_real, reduced_freq=False, chunk_size=500)
     
-    # Calculate errors
     errors = np.abs(actual_absorptions - target_absorption) / (target_absorption + 1e-8) * 100
     
-    # Find best candidate
     best_idx = np.argmin(errors)
     best_design = generated_real[best_idx]
     best_absorption = actual_absorptions[best_idx]
@@ -704,7 +598,6 @@ def predict_manual_target(diffusion, target_absorption, scaler_x, device, num_ca
     param_names = ['d1','d2','d3','d4','d5','d6','d7','d8','d9','d10',
                    'm2','m3','m5','m6','m8','m9','rho','eta','E','nu']
     
-    # Print summary of all candidates
     print("\n" + "="*70)
     print(f"SUMMARY: ALL {num_candidates} CANDIDATES")
     print("="*70)
@@ -715,7 +608,6 @@ def predict_manual_target(diffusion, target_absorption, scaler_x, device, num_ca
         print(f"Candidate {i+1:<2} {actual_absorptions[i]:>15.6f} {errors[i]:>20.2f}{marker}")
     print("="*70)
     
-    # Print ONLY the best candidate's parameters
     print("\n" + "="*70)
     print(f"BEST CANDIDATE (Candidate {best_idx + 1})")
     print("="*70)
@@ -733,9 +625,7 @@ def predict_manual_target(diffusion, target_absorption, scaler_x, device, num_ca
         'error': best_error,
         'design': best_design,
         'absorption': best_absorption,
-        'all_candidates': generated_real,
-        'all_absorptions': actual_absorptions,
-        'all_errors': errors
+        'seed': seed
     }
 
 # ==========================================
@@ -744,15 +634,17 @@ def predict_manual_target(diffusion, target_absorption, scaler_x, device, num_ca
 
 def main():
     print("\n" + "="*70)
-    print("PHYSICS-GUIDED CONDITIONAL DIFFUSION MODEL (FiLM + Sinusoidal)")
+    print("PHYSICS-GUIDED CONDITIONAL DIFFUSION MODEL")
     print("="*70)
+    
+    set_seed(42)
     
     print("\nLoading Data...")
     try:
         df = pd.read_csv('lhs_data.csv')
         print(f"✓ Dataset loaded: {df.shape}")
     except FileNotFoundError:
-        print("Error: 'lhs_data.csv' not found. Please upload the dataset first.")
+        print("Error: 'lhs_data.csv' not found.")
         return
     
     param_cols = ['d1','d2','d3','d4','d5','d6','d7','d8','d9','d10',
@@ -803,7 +695,6 @@ def main():
         train_loader = DataLoader(train_dataset, batch_size=256, shuffle=True)
         val_loader = DataLoader(val_dataset, batch_size=256, shuffle=False)
         
-        # INCREASED HIDDEN DIM FOR BETTER CAPACITY
         net = ConditionalDiffusionNet(hidden_dim=512).to(device)
         diffusion = DiffusionModel(net, num_timesteps=100, device=device)
         optimizer = optim.Adam(net.parameters(), lr=1e-3)
@@ -815,8 +706,6 @@ def main():
         print("="*70)
         
         best_val_loss = float('inf')
-        train_losses = []
-        val_losses = []
         
         for epoch in range(epochs):
             epoch_start = time.time()
@@ -829,10 +718,8 @@ def main():
                 train_loss += loss
             
             train_loss /= len(train_loader)
-            train_losses.append(train_loss)
             
             val_loss = diffusion.validate(val_loader)
-            val_losses.append(val_loss)
             
             epoch_time = time.time() - epoch_start
             
@@ -852,21 +739,22 @@ def main():
         
         diffusion, scaler_x = load_model(model_path, device)
     
-    # --- D. Test on Test Set ---
+    # Test on Test Set and save to CSV
     X_test_norm = scaler_x.transform(X_test)
-    test_results = comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, num_candidates=10)
+    test_results = comprehensive_test(diffusion, X_test_norm, y_test, scaler_x, device, 
+                                     num_candidates=10, seed=42, output_csv='test_predictions.csv')
     
-    # --- E. MANUAL TARGET PREDICTION ---
+    # Manual Target Prediction
     print("\n" + "="*70)
     print("MANUAL TARGET ABSORPTION INPUT")
     print("="*70)
     
-    # CHANGE THIS VALUE TO YOUR DESIRED TARGET ABSORPTION
-    manual_target = 0.325678  # Example: Change this to any value between 0 and 1
+    manual_target = 0.325678
     
-    manual_results = predict_manual_target(diffusion, manual_target, scaler_x, device, num_candidates=10)
+    manual_results = predict_manual_target(diffusion, manual_target, scaler_x, device, 
+                                          num_candidates=10, seed=42)
     
-    # --- F. Final Summary ---
+    # Final Summary
     print("\n" + "="*70)
     print("FINAL SUMMARY")
     print("="*70)
@@ -879,18 +767,10 @@ def main():
     print(f"  ✓ Target Absorption: {manual_results['target']:.6f}")
     print(f"  ✓ Best Candidate Error: {manual_results['error']:.2f}%")
     
-    print("\n💾 MODEL INFO:")
-    print(f"  ✓ Model saved as: {model_path}")
-    print(f"  ✓ Scaler saved as: diffusion_model_film_v2_scaler.pkl")
-    print(f"  ✓ To retrain: Delete both files and run again")
-    
-    print("\n✅ PARAMETER CONSTRAINTS:")
-    print(f"  ✓ d1-d10: [1.0, 20.0] mm")
-    print(f"  ✓ m2,m3,m5,m6,m8,m9: [20.0, 1980.0] mm")
-    print(f"  ✓ rho: [1000.0, 1500.0] kg/m³")
-    print(f"  ✓ eta: [0.1, 0.8]")
-    print(f"  ✓ E: [1E7(1+eta), 1E8(1+eta)] Pa")
-    print(f"  ✓ nu: [0.4, 0.49]")
+    print("\n💾 FILES SAVED:")
+    print(f"  ✓ Model: {model_path}")
+    print(f"  ✓ Scaler: diffusion_model_film_v2_scaler.pkl")
+    print(f"  ✓ Test Predictions: test_predictions.csv")
     print("="*70)
 
 if __name__ == "__main__":
