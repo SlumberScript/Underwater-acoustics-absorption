@@ -161,17 +161,19 @@ def plot_figure_3_reproduction(freq, alpha, R, Z_in):
 def get_custom_parameters():
     """
     Returns custom design parameters for comparison.
+    EDIT THESE VALUES to test any parameter set.
     """
-    rho = 1262.5046
-    eta = 0.2801
-    E_real = 69797432.0
-    nu = 0.4447
+    rho = 1254.90951538086
+    eta = 0.700865012407303
+    E_real = 7.96552193164825e7   # E_real only — code computes E_c = E*(1+ηi) internally
+    nu = 0.472864060401917
     
     W = 2000.0
-    d_layers = [15.1937, 12.8068, 3.2291, 5.6873, 15.8936,
-                10.3080, 8.7546, 18.6522, 7.5621, 10.1671]
-    m_values = {2: 757.3267, 3: 726.2697, 5: 649.8660,
-                6: 1862.7896, 8: 750.0145, 9: 798.2514}
+    d_layers = [10.4116438329220, 9.59269911050797, 9.48593208193779, 10.2778358161449,
+                9.56153133511543, 9.52644741535187, 10.2548802793026, 9.57734596729279,
+                9.54049196839333, 10.3517957925797]
+    m_values = {2: 422.048478722572, 3: 415.016191601753, 5: 421.283624768257,
+                6: 428.282207846642, 8: 437.154577970505, 9: 433.320407271385}
 
     return {'rho': rho, 'eta': eta, 'E': E_real, 'nu': nu, 'W': W, 'd': d_layers, 'm': m_values}
 
@@ -187,6 +189,7 @@ def plot_custom_absorption(freq_base, alpha_base, freq_custom, alpha_custom):
             label=f'Custom Parameters (avg={np.mean(alpha_custom):.4f})')
     
     ax.set_xlabel('Frequency/Hz', fontsize=12)
+
     ax.set_ylabel('Sound Absorption Coefficient', fontsize=12)
     ax.set_ylim(0, 1.0)
     ax.set_xlim(0, 1000)
