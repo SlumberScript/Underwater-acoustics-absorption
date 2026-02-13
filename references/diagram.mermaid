@@ -1,0 +1,102 @@
+flowchart TD
+    subgraph DATA["1. DATA (100,000 LHS samples)"]
+        CSV["lhs_data.csv<br/>100K rows × 21 cols"]
+        CSV --> SPLIT["Train/Val/Test Split<br/>(80K / 10K / 10K)<br/>random_state=42"]
+        SPLIT --> NORM["MinMaxScaler<br/>Normalize 20 params to [0,1]"]
+    end
+
+    subgraph AUDIT["2. AUDIT (Notebook 09 Model)"]
+        LOAD09["Load NB-09 Model<br/>(FiLM-DDPM, 10 epochs)"]
+        LOAD09 --> LEAK["Leak Check<br/>Hash rows, find overlap"]
+        LOAD09 --> SINGLE9["Single-Sample Test<br/>(1 candidate per target)"]
+        LOAD09 --> BESTN9["Best-of-10 Test<br/>(select lowest error)"]
+        LOAD09 --> RANGE9["Error by Absorption Range"]
+        LEAK --> VERDICT["Verdict: No leakage,<br/>undertrained, honest"]
+    end
+
+    subgraph SURROGATE["3. FORWARD SURROGATE"]
+        SURR_ARCH["MLP: 20 → 256 → 256 → 128 → 1<br/>LeakyReLU + BatchNorm + Sigmoid"]
+        SURR_TRAIN["Train 30 epochs<br/>Input: normalised params<br/>Output: absorption coeff<br/>Loss: MSE"]
+        SURR_FREEZE["Freeze weights<br/>(no gradient updates)<br/>R² = 0.9962"]
+        SURR_ARCH --> SURR_TRAIN --> SURR_FREEZE
+    end
+
+    subgraph DIFFUSION["4. IMPROVED DIFFUSION MODEL (V3)"]
+        direction TB
+        
+        subgraph FORWARD["Forward Process (add noise)"]
+            X0["x₀ = normalised params [B,20]"]
+            NOISE["ε ~ N(0,I)"]
+            COSINE["Cosine β schedule<br/>100 timesteps"]
+            X0 --> XT["x_t = √ᾱ_t · x₀ + √(1-ᾱ_t) · ε"]
+            NOISE --> XT
+            COSINE --> XT
+        end
+
+        subgraph NET["ConditionalDiffusionNetV3"]
+            direction TB
+            TIME_EMB["Time Embedding<br/>Sinusoidal → MLP(512→512)"]
+            COND_EMB["Cond Embedding<br/>target α → MLP(1→512)"]
+            TIME_EMB --> PLUS["Add: t_emb + c_emb"]
+            COND_EMB --> PLUS
+            INPUT["Input Proj: x_t [20] → [512]"]
+            INPUT --> FILM1["FiLM Block 1<br/>FC→LN→FiLM(scale,shift)→SiLU→FC + skip"]
+            PLUS --> FILM1
+            FILM1 --> FILM2["FiLM Block 2"]
+            PLUS --> FILM2
+            FILM2 --> FILM3["FiLM Block 3"]
+            PLUS --> FILM3
+            FILM3 --> FILM4["FiLM Block 4"]
+            PLUS --> FILM4
+            FILM4 --> FINAL["LayerNorm → SiLU → Linear(512→20)<br/>(zero-init)"]
+            FINAL --> EPS_PRED["ε_pred [B,20]"]
+        end
+
+        subgraph LOSS["Dual Training Loss"]
+            L_NOISE["L_noise = MSE(ε_pred, ε)"]
+            RECON["Reconstruct: x̂₀ = (x_t - √(1-ᾱ_t)·ε_pred) / √ᾱ_t"]
+            RECON --> SURR_FWD["Frozen Surrogate(x̂₀) → α̂"]
+            SURR_FWD --> L_PHYS["L_phys = MSE(α̂, α_target)"]
+            L_NOISE --> TOTAL["L = L_noise + λ · L_phys<br/>λ ramps 0→0.1 over 15 epochs"]
+            L_PHYS --> TOTAL
+        end
+
+        subgraph SAMPLING["Reverse Sampling (generation)"]
+            PURE["x_T ~ N(0,I)"]
+            PURE --> DENOISE["For t=T→0:<br/>predict ε, compute mean,<br/>add noise (DDPM)"]
+            DENOISE --> CLIP["Every 10 steps:<br/>un-normalise → clip params<br/>→ re-normalise"]
+            CLIP --> DENOISE
+            DENOISE --> OUTPUT["x₀ = generated params [B,20]"]
+        end
+    end
+
+    subgraph EMA["5. EMA (Exponential Moving Average)"]
+        EMA_UPDATE["After each train step:<br/>θ_ema = 0.999·θ_ema + 0.001·θ"]
+        EMA_USE["Sampling uses EMA weights<br/>(smoother, more stable)"]
+    end
+
+    subgraph VALIDATION["6. TESTING & VALIDATION"]
+        TMM["TMM Physics Engine (GPU)<br/>Full 1-1000 Hz sweep<br/>Ground-truth absorption"]
+        SINGLE_V3["Single-Sample Error<br/>(1 candidate)"]
+        BEST_V3["Best-of-20 Error<br/>(select best candidate)"]
+        COMPARE["Head-to-Head<br/>NB09 vs V3"]
+        OUTPUT --> TMM
+        TMM --> SINGLE_V3
+        TMM --> BEST_V3
+        SINGLE_V3 --> COMPARE
+        BEST_V3 --> COMPARE
+    end
+
+    DATA --> AUDIT
+    DATA --> SURROGATE
+    DATA --> DIFFUSION
+    SURR_FREEZE --> LOSS
+    EMA --> SAMPLING
+    DIFFUSION --> VALIDATION
+
+    style DATA fill:#e3f2fd,stroke:#1565c0
+    style AUDIT fill:#fff3e0,stroke:#e65100
+    style SURROGATE fill:#e8f5e9,stroke:#2e7d32
+    style DIFFUSION fill:#f3e5f5,stroke:#6a1b9a
+    style EMA fill:#fce4ec,stroke:#b71c1c
+    style VALIDATION fill:#e0f7fa,stroke:#00695c
