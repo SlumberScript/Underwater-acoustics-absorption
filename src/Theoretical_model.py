@@ -163,17 +163,16 @@ def get_custom_parameters():
     Returns custom design parameters for comparison.
     EDIT THESE VALUES to test any parameter set.
     """
-    rho = 1254.90951538086
-    eta = 0.700865012407303
-    E_real = 7.96552193164825e7   # E_real only — code computes E_c = E*(1+ηi) internally
-    nu = 0.472864060401917
+    rho = 1437.4813
+    eta = 0.7836
+    E_real = 8.44808000000000e7   # E_real only — code computes E_c = E*(1+ηi) internally
+    nu = 0.4855
+
     
     W = 2000.0
-    d_layers = [10.4116438329220, 9.59269911050797, 9.48593208193779, 10.2778358161449,
-                9.56153133511543, 9.52644741535187, 10.2548802793026, 9.57734596729279,
-                9.54049196839333, 10.3517957925797]
-    m_values = {2: 422.048478722572, 3: 415.016191601753, 5: 421.283624768257,
-                6: 428.282207846642, 8: 437.154577970505, 9: 433.320407271385}
+    d_layers = [17.7474, 15.0150, 4.0653, 13.8887, 6.5307, 5.2711, 8.8491, 15.2868, 7.4513, 1.0708]
+    m_values = {2: 162.6097, 3: 1573.3405, 5: 1508.9844,
+                6: 1486.0946, 8: 737.9739, 9: 586.8458}
 
     return {'rho': rho, 'eta': eta, 'E': E_real, 'nu': nu, 'W': W, 'd': d_layers, 'm': m_values}
 
@@ -223,14 +222,6 @@ if __name__ == "__main__":
     print("-" * 60)
     print("Plotting Custom vs Base Case comparison...")
     plot_custom_absorption(freq, alpha, freq_c, alpha_c)
-
-    # # Print Calculated Complex Surface Impedance
-    # print("\nCalculated Complex Surface Impedance (Z_in) Samples:")
-    # print("First 5 values (1-5 Hz):")
-    # print(Z_in[:5])
-    # print("\nLast 5 values (996-1000 Hz):")
-    # print(Z_in[-5:])
-    # print("-" * 60)
     
     print("\nPlotting Figure 3 (Base Case full analysis)...")
     plot_figure_3_reproduction(freq, alpha, R, Z_in)
