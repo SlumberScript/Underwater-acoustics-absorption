@@ -1,0 +1,92 @@
+\documentclass[12pt]{article}
+
+% ---------- Page + font ----------
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{newtxtext,newtxmath} % Times New Roman
+\usepackage{setspace}
+
+% ---------- Spacing ----------
+\setstretch{1.0}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0\baselineskip}
+
+% ---------- Header ----------
+\usepackage{fancyhdr}
+\setlength{\headheight}{28pt}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyhead[R]{%
+\textit{Indian Conference on Applied Mechanics (INCAM), 09-11 July, 2026}\\
+\textit{Indian Society for Applied Mechanics}%
+}
+
+% ---------- Headings: keep 12 pt ----------
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{0.5\baselineskip}{0.5\baselineskip}
+\titleformat{\section}
+{\normalfont\bfseries\fontsize{12}{14}\selectfont}
+  {}
+  {0pt}
+  {}
+
+% ---------- Math, figures, tables ----------
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[normalem]{ulem} % underline
+
+\begin{document}
+
+\begin{center}
+{\bfseries\fontsize{12}{14}\selectfont Title of the Paper}
+
+{\fontsize{12}{14}\selectfont
+\uline{Author 1}$^{\text{a},*}$, Author 2$^{\text{b}}$, Author 3$^{\text{c}}$ \ldots}
+
+{\fontsize{10}{14}\selectfont
+$^{\text{a}}$ Affiliation 1
+
+$^{\text{b}}$ Affiliation 2
+
+$^{\text{c}}$ Affiliation 3
+}
+\end{center}
+
+*Corresponding Author's Email:
+\par\vspace{0.3\baselineskip}
+\textbf{Keywords}: 3--5 relevant terms or phrases that define the paper's content
+
+\section*{Introduction}
+The abstract should be written in Times New Roman font, size 12. Use single line spacing within paragraphs and double line spacing between paragraphs. The introduction section should briefly state the background and motivation for the study. Identify the research gap or problem being addressed and focus on the significance and objectives. Avoid detailed technical descriptions. Cite the references like this \cite{ref1}. Images may be included if necessary. The entire abstract, including figures and references, must fit within two pages. Content exceeding two pages will not be accepted for the final printed version.
+
+\section*{Methodology}
+Most standard inverse-design methods for underwater acoustics struggle with the one-to-many nature of the problem, where multiple parameter combinations can satisfy the same target absorption. To address this, we propose a physics-guided conditional diffusion framework that generates multiple feasible coating designs for a specified average absorption coefficient.
+
+The material architecture follows a 10-layer configuration with rigid backing and hollow sub-layers, represented by 20 sensitive variables (16 geometric and 4 mechanical parameters) \cite{ref1}. We adopt the analytical transfer-matrix-based formulation from \cite{ref1} to compute the average absorption coefficient and build a large-scale dataset using Latin Hypercube Sampling (LHS).
+
+A lightweight Multi-Layer Perceptron (MLP) surrogate is first trained to map normalized parameters to absorption and then frozen. During diffusion training, this frozen surrogate provides physics guidance through a consistency term, while the conditional denoiser uses timestep and target-conditioned embeddings with Feature-wise Linear Modulation (FiLM) blocks under a cosine noise schedule.
+
+Two pivotal losses were examined for computing the gradients: the noise prediction loss and the physics loss carried out by the frozen surrogate model. Subsequently, the total loss was computed using Eq. (1),
+\begin{equation}
+    loss_{total} = loss_{noise} + (\lambda \cdot loss_{physics})
+    \label{eq:1}
+\end{equation}
+where $\lambda$ is a physics weight ramped over the initial training epochs. At inference, the model generates 20 candidate parameter sets for each target, and the best candidates are selected using Transfer Matrix Method (TMM) verification, enabling one-to-many inverse design with physical consistency.
+
+\section*{Results}
+The proposed physics-guided conditional diffusion framework was evaluated on 100,000 unseen test samples using TMM-verified best-of-20 selection. The model achieved a mean relative error of 0.11\%, median relative error of 0.07\%, and P95 relative error of 0.34\%, with $R^2 = 1.0000$ and MAPE = 0.11\% (MAE = 0.0003, RMSE = 0.0004). Beyond test-set evaluation, a 901-target sweep from 1.0 to 0.1 (step 0.001) was performed to assess controllability across the design space, showing stable target tracking over a broad absorption range. Compared with prior work that reports a limited number of cases \cite{ref1}, the present study emphasizes full-distribution evaluation on unseen data.
+
+\section*{Summary}
+Provide a clear, short overview of the main findings and their broader implications. Mention possible applications or the relevance to the conference theme. Optionally, include brief remarks on ongoing or future work.
+
+\begin{thebibliography}{9}
+
+\bibitem{ref1} 
+Gao, Nansha, Mou Wang, Xiao Liang, and Guang Pan. ``On-demand prediction of low-frequency average sound absorption coefficient of underwater coating using machine learning.'' \textit{Results in Engineering}, 25 (2025): 104163.
+
+
+\end{thebibliography}
+
+\end{document}
