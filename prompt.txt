@@ -1,0 +1,113 @@
+my prompt : ```" I want you to cleanup all the unwanted code from
+   @notebooks/11_cINN_1DCNN.ipynb , with reference to
+   @notebooks/10_Advanced_Audit_and_Improved_Diffusion.ipynb , as
+   @notebooks/10_Advanced_Audit_and_Improved_Diffusion.ipynb has al the
+   comparision and all the analysis and everything, i dont want to run the test 
+   again in @notebooks/11_cINN_1DCNN.ipynb, but other than than i want you to   
+   to make it exaclty same to same as
+   @notebooks/10_Advanced_Audit_and_Improved_Diffusion.ipynb ,/n Note : the     
+   notebook no 10 is for a different use case that is adding a single value as  
+   the target avg absorption, but the number 11 is for the full spectrum, that  
+   essentially means that insted of targeted average we give the targeted slop  
+   or the entire absorption curve for the frequencies form 1-1000 and according 
+   to the inference it will give the parameters and that perameters are
+   ettentially tested along with TMM or theoritical model to get the actual     
+   absorption on those perameters and then comapre that absorption to the       
+   tartgetd absorption and that is esentially the error ritht ? this is how     
+   inverse desing inference work. what i want you to do is that based on this   
+   concept migrate the existing results in visualization thing that is from     
+   Final Summary to the last cell and change it for the given model and its     
+   usecase"```
+
+Note: i have given this my prompt to the 2 differnt llms and this are its plan accordingliy, what i want you to do is review the folder and the prompt in isolation and then prepare the palan yourself of exaclty what needs to be done and then further compare it what the 2 plans form 2 differnet llms and them filling int he missing part and create a master plan.md file with the task breakhup and status checkpoints, it should be very discriptive and should be self explainotary, refer @beautifulMentionand @beautifulMentionif needed
+
+plan 1 :```Ready to start implementation?                                                                                             │
+│                                                                                                                            │
+│ Objective                                                                                                                  │
+│ Align notebook 11 to notebook 10’s structure and final-report quality, while preserving full-spectrum cINN behavior. I     │
+│ will keep training/testing cells, keep extra diagnostics, remove stale commented/duplicate code, and gate only expensive   │
+│ large-scale evaluation paths by default.                                                                                   │
+│                                                                                                                            │
+│ Key Files & Context                                                                                                        │
+│  - notebooks/11_cINN_1DCNN.ipynb: Primary cleanup and migration target.                                                    │
+│  - notebooks/10_Advanced_Audit_and_Improved_Diffusion.ipynb: Structure and style reference.                                │
+│  - src/Theoretical_model.py: Final validation backend for full-spectrum checks.                                            │
+│                                                                                                                            │
+│ Implementation Steps                                                                                                       │
+│                                                                                                                            │
+│ Phase 1: Baseline Mapping and Runtime Gates                                                                                │
+│  1. Mirror notebook 10 section flow in notebook 11 (setup, physics, model, training, evaluation, comparison, final         │
+│     summary, publication visuals, diagnostics).                                                                            │
+│  2. Mark notebook 11 cells into keep/refactor/remove/gate categories.                                                      │
+│  3. Add top-level runtime toggles for expensive work (fast default vs full run), so heavy 1 lakh-style evaluation is       │
+│     disabled unless explicitly enabled.                                                                                    │
+│                                                                                                                            │
+│ Phase 2: Structural Cleanup and Parity                                                                                     │
+│  1. Update notebook 11 markdown titles/order to match notebook 10 style, but with full-spectrum language.                  │
+│  2. Remove abandoned commented blocks and duplicate dead code while preserving active reproducible paths.                  │
+│  3. Consolidate duplicated utility snippets so each validation/helper exists once and downstream cells reuse it.           │
+│  4. Keep training/testing cells intact; only reduce default runtime in expensive evaluation branches.                      │
+│                                                                                                                            │
+│ Phase 3: Final Summary to Last-Cell Migration                                                                              │
+│  1. Port notebook 10’s final-storytelling pattern into notebook 11 and adapt all claims/metrics to full-spectrum matching. │
+│  2. Update summary logic from average-target framing to curve-level framing (target curve vs achieved curve error).        │
+│  3. Keep panel-style outputs and diagnostics (scatter-style summary, 3-case verification, top-5 overlays, all-20           │
+│     candidates, sweep visuals, t-SNE/UMAP), but with full-spectrum-consistent labels and error definitions.                │
+│                                                                                                                            │
+│ Phase 4: Reproducibility Polish                                                                                            │
+│  1. Standardize figure names/titles and ensure stable save paths.                                                          │
+│  2. Add lightweight pre-plot checks for required arrays/shapes to prevent late-cell failures.                              │
+│  3. Add a short run-order note cell describing fast mode vs full reproduction mode.                                        │
+│                                                                                                                            │
+│ Verification                                                                                                               │
+│  - Fast-mode notebook run completes from top to final cell.                                                                │
+│  - Final Summary onward clearly describes full-spectrum inverse design and curve-level error.                              │
+│  - Panel outputs and diagnostics save correctly with consistent naming.                                                    │
+│  - Top-5 and all-20 candidate diagnostics produce sensible ranking behavior.                                               │
+│  - Sweep/manifold plots run in fast settings; full heavy path remains available behind toggles.                            │
+│  - Validate Theoretical-model cross-check on representative target curves and confirm curve-level error reporting is       │
+│    consistent.                   ```
+
+plan 2 : ```Plan: Notebook 11 Conference Cleanup
+Updated your plan to match your 9 implementation requirements exactly, with concrete cleanup checkpoints from 11_cINN_1DCNN.ipynb.
+
+What I confirmed in the notebook
+
+The main evaluation path currently defines and uses unbounded sampling by default at 11_cINN_1DCNN.ipynb:1758 and 11_cINN_1DCNN.ipynb:1854.
+Large dead commented legacy blocks exist and are good removal targets around 11_cINN_1DCNN.ipynb:1990 and 11_cINN_1DCNN.ipynb:2698.
+Panel cells still carry diffusion-era wording that must be adapted to cINN semantics around 11_cINN_1DCNN.ipynb:4270, 11_cINN_1DCNN.ipynb:4393, and 11_cINN_1DCNN.ipynb:4578.
+Leftover notebook-10 symbol references still appear and must be removed/replaced, including test_results_v3 and diffusion_v3 references reported in the tail sections of 11_cINN_1DCNN.ipynb.
+Execution Plan
+
+Set evaluation runtime controls:
+Add top-level flags and switch evaluate_test_set_cinn default invocation to num_samples=1000 (or 2000), while preserving full evaluation path behind a toggle.
+Remove dead commented code:
+Delete large commented architecture/evaluation/uncertainty blocks and duplicate commented publication cells.
+Final summary adaptation:
+Use only cINN test outputs and Theoretical Model verification metrics for final summary.
+Panel (b) adaptation:
+Keep Target Average vs Achieved Average scatter computed from full-spectrum predictions, with cINN-specific labels/claims.
+Panel (c) adaptation:
+Pick low/medium/high target spectra from test set, generate 20 cINN candidates each, rank by full-curve RMSE, verify best with Theoretical Model, and plot target vs verified curves.
+Panel (d) adaptation:
+Compare cINN metrics with Gao et al. and keep baseline comparison only if baseline metrics are present; fix wording to full-spectrum generation.
+Synthetic Gaussian inverse-design:
+Add a configurable Gaussian target spectrum demo at a selected center frequency and show cINN inverse design + verification.
+Top-K diagnostic updates:
+Update best/top-4/top-6 sample cells so all candidate generation uses cINN full-spectrum conditioning only.
+901-level sweep and manifold:
+Map 901 scalar levels to closest test spectra, generate cINN candidates, compute Pareto and t-SNE/UMAP, with heavy mode default-off.
+Consistency cleanup:
+Remove all active notebook-10 variable dependencies and diffusion-era labels.
+Relevant files
+
+11_cINN_1DCNN.ipynb
+10_Advanced_Audit_and_Improved_Diffusion.ipynb
+Theoretical_model.py
+Verification gates
+
+Notebook runs end-to-end in fast mode with no undefined symbols.
+No active usage of diffusion_v3, test_results_v3, scaler_v3.
+Panel (b), (c), (d), Gaussian target demo, top-k diagnostics, and sweep/manifold cells execute and save figures.
+Final summary is cINN full-spectrum consistent and conference-ready.```
+
