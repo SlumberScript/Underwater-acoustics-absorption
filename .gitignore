@@ -3,3 +3,5 @@ data/lhs_data_full_spectrum.parquet
 data/lhs_data_full_spectrum.npz
 data/lhs_data_full_spectrum.csv
 data/lhs_data.csv
+saved_models/
+*.pkl
