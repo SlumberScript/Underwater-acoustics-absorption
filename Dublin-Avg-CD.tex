@@ -1,0 +1,148 @@
+\documentclass[conference]{IEEEtran}
+
+% --- Packages ---
+\usepackage{amsmath,amssymb,graphicx,xcolor,hyperref,fancyhdr}
+\definecolor{metablue}{RGB}{0,141,169}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=metablue,
+    citecolor=metablue,
+    urlcolor=metablue
+}
+
+% --- Running header setup ---
+\makeatletter
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyhead[C]{META 2026, DUBLIN -- IRELAND, JULY 14 -- 17, 2026}
+    \renewcommand{\headrulewidth}{0.4pt}
+}
+\fancypagestyle{IEEEtitlepagestyle}{
+    \fancyhf{}
+    \fancyhead[C]{META 2026, DUBLIN -- IRELAND, JULY 14 -- 17, 2026}
+    \renewcommand{\headrulewidth}{0.4pt}
+}
+\pagestyle{IEEEtitlepagestyle}
+\makeatother
+
+% --- Title and Author ---
+\title{Hybrid Physics–Machine Learning Framework for
+Inverse Design of Underwater Acoustic
+Metamaterial Coatings}
+
+\author{
+Vatsal Patel\textsuperscript{1}, Vimi Patel\textsuperscript{1}, Yash Patel\textsuperscript{1}, Krupali Donda\textsuperscript{1,*} \\[1ex]
+\textsuperscript{1} Faculty of Engineering Sciences and Technology, Adani University, Ahmedabad\\
+
+*Corresponding author: \href{mailto:krupali.donda@adaniuni.ac.in}{krupali.donda@adaniuni.ac.in}
+}
+
+\begin{document}
+\maketitle
+
+% --- Abstract (max 50 words) ---
+\begin{abstract}
+%%% Start here with text of abstract
+Low-frequency underwater noise attenuation remains challenging due to long acoustic wavelengths and impedance mismatch between water and conventional absorbers. Multilayer acoustic coatings with internal cavities offer promising broadband absorption, but their performance depends on numerous coupled geometric and material parameters, making design optimization computationally expensive. Although machine learning has accelerated forward and inverse prediction, inverse design remains highly non-unique, with multiple structures producing similar absorption responses. This work proposes a hybrid physics–machine learning diffusion framework for the inverse design of underwater acoustic metamaterial coatings, enabling efficient generation of multiple physically consistent candidate designs for target acoustic absorption spectra.
+
+
+\textit{Keywords—} Acoustic metamaterials, Inverse design, Machine learning, Physics-informed learning
+\end{abstract}
+
+% --- Sections ---
+\section{Introduction}
+The attenuation of low-frequency underwater noise remains challenging due to the long acoustic wavelengths and the impedance mismatch between water and conventional absorbing materials. Multilayer acoustic coatings with internal cavities have emerged as promising solutions to improve sound absorption in the 1 to 1000 Hz range. One of the representative example is the multilayer rubber coating proposed by Gao et al. [1], whose acoustic response depends on twenty geometric and material parameters. While forward models based on equivalent medium theory and the transfer matrix method (TMM) can accurately predict the absorption spectrum, exploring the corresponding design space is computationally expensive.
+
+Recent studies have used machine learning models to accelerate the prediction and inverse design of such acoustic structures. However, inverse design is inherently non-unique, as different structural configurations may produce similar acoustic responses. Using a single performance descriptor such as the average absorption coefficient further reduces spectral information and increases this ambiguity. Consequently, identifying multiple feasible designs for a specified acoustic target remains challenging. To address this limitation, this work proposes a hybrid physics–machine learning diffusion framework for inverse design of underwater acoustic metamaterial coatings, enabling efficient exploration of multiple physically consistent candidate designs.
+
+\section{Methods}
+% Our methodology integrates simulation, optimization algorithms, and experimental feedback:
+% \begin{equation}
+% \epsilon_{\mathrm{eff}}(\omega) = \sum_{n=1}^{N} \frac{f_n \omega_n^2}{\omega_n^2 - \omega^2 - i \gamma_n \omega},
+% \end{equation}
+% where $\epsilon_{\mathrm{eff}}$ denotes the effective permittivity, $f_n$ the oscillator strength, $\omega_n$ the resonant frequency, and $\gamma_n$ the damping factor.
+
+The proposed inverse design framework is illustrated in Fig. 1(a). The material architecture follows a 10-layer configuration with rigid backing and hollow sub-layers, represented by 20 sensitive variables (16 geometric and 4 mechanical parameters). We adopt the same analytical TMM) formulation as in Ref.1 to compute the average absorption coefficient and build a large-scale dataset using Latin Hypercube Sampling (LHS).
+
+A lightweight Multi-Layer Perceptron (MLP) surrogate is first trained to map normalized parameters to absorption coefficient and then frozen. During diffusion training, this frozen surrogate provides physics guidance through a consistency term, while the conditional denoiser uses timestep and target-conditioned embeddings with Feature-wise Linear Modulation (FiLM) blocks under a cosine noise schedule. Two pivotal losses were examined for computing the gradients: the noise prediction loss and the physics loss carried out by the frozen surrogate model. Subsequently, the total loss was computed using  
+$loss_{total} = loss_{noise} + (\lambda \cdot loss_{physics})$
+ where $\lambda$ is a physics weight ramped over the initial training epochs. At inference, the model generates 20 candidate parameter sets for each target, and the best candidates are selected using TMM verification, enabling one-to-many inverse design with physical consistency.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{fi1.pdf}
+\caption{Hybrid physics–machine learning diffusion framework for inverse design of underwater acoustic metamaterial coatings. (a) Diffusion-based parameter generation process. (b) Diffusion model with surrogate-based physics guidance and TMM validation. (c) Embedded design space showing structured variation with target absorption. (d) Heatmap of TMM-validated spectra (1–1000 Hz, targets 0.1–1.0). (e) Best-of-20 reconstructed spectra demonstrating accurate target recovery.}
+\label{fig:design}
+\end{figure*}
+
+The entire structure possesses 16 distinct geometric parameters and 4 material parameters, which were primarily utilized in computing the broadband absorption spectrum with careful examination and strict adherence to the analytical derivation of the complex absorption determination presented in \cite{gao2025ondemand}. Subsequently, an extensive dataset was constructed consisting of 1,000,000 rows of the aforementioned 20 sensitive parameters and the corresponding computed absorption coefficients. This dataset was generated randomly using the Latin Hypercube Sampling (LHS) method while ensuring compliance to their respective predefined structural limits and their corresponding absorption coefficient values.
+
+\vspace{-1ex}
+\subsection{Computational Model And Implementation}
+Following data generation, we trained the Conditional diffusion model to build the aforementioned inverse design framework. Fig.~\ref{fig:design} (d) illustrates the workflow of the developed model. The proposed network includes a spectrum encoder that transforms the 1000-frequency absorption spectrum into a 128-dimensional embedding vector, forcing the network to learn essential spectral features instead of memorizing the noise. Subsequently, the 20-dimensional parameter sets and the embedded vector from the training subset were utilized to train 8 identical conditional affine coupling blocks for 250 epochs. Each block comprises a 3-layer Multi-Layer Perceptron (MLP) with LeakyReLU activations, responsible for transforming the input parameter sets. These blocks collectively function in two possible directions: the forward pass during training and the reverse pass during testing. 
+
+For each training epoch, we employed the Negative Log-Likelihood (NLL) as the loss function, averaged across the entire training batch, which is given by (1).
+\begin{equation}
+    \text{NLL} = \text{mean} \left( \frac{1}{2} \|\mathbf{z}\|^2 - \log |\det(\mathbf{J})| \right)
+\end{equation}
+Here, $\frac{1}{2} \|\mathbf{z}\|^2$ represents the squared $L_2$ norm of the latent variable, and $-\log |\det(\mathbf{J})|$ is the log-determinant of the Jacobian matrix that accounts for volume distortion during the transformation. Cosine annealing was consequently applied after each epoch to control the learning rate and fine-tune the optimization process. 
+
+Each target spectrum, alongside 20 independent Gaussian vectors, undergoes reverse processing through the entire network, producing 20 different parameter sets, each conditioned for the same target, explicitly addressing the one-to-many mapping between geometry and acoustic absorption, and thereby exploring different regions of the solution space.
+
+\vspace{-1ex}
+
+
+% \begin{figure}[h]
+% \centering
+% \includegraphics[width=0.9\linewidth]{Meta_Dublin.pdf}
+% \caption{Physics-guided inverse design framework for broadband underwater acoustic metamaterials. (a–c) Multilayer unit-cell configuration with 20 design parameters (16 geometric, 4 material). (d) Conditional Invertible Neural Network (cINN) architecture mapping 1000-point absorption spectra (1–1000 Hz) to structural parameters, generating 20 candidate designs per target. (e) Predicted absorption spectra demonstrating high-fidelity full-spectrum reconstruction with mean relative error <0.3%}
+% \label{fig:design}
+% \end{figure}
+
+\section{Results and Discussion}
+% Experimental results show:
+% \begin{itemize}
+%     \item 92 percent absorption at 0.8 THz
+%     \item 40 percent broader operational bandwidth than conventional THz absorbers
+%     \item Strong agreement between simulated and measured spectra (Fig.~\ref{fig:design})
+% \end{itemize}
+
+The proposed conditional diffusion framework was evaluated on 100,000 unseen test samples using TMM-verified best-of-20 selection. Model performance is quantified using relative error between the target and predicted average absorption coefficients. As shown in Fig. 1(e), the framework achieves an average relative error of 0.1063\% for the best-of-20 candidate designs, with a minimum error of 0.00\% and a maximum of 6.9354\%, demonstrating high predictive accuracy across the test dataset. Unlike deterministic approaches, the framework generates multiple candidate parameter sets for each target, addressing the inherent non-uniqueness of the inverse design problem. The embedded design space (Fig. 1(c)) shows a structured organization, indicating that the model captures meaningful relationships between parameters and acoustic response. The spectral distribution across target levels (Fig. 1(d)) exhibits smooth and consistent variation, confirming physically coherent behavior.  
+
+\section{Conclusion}
+A hybrid physics–machine learning diffusion framework is proposed for inverse design of underwater acoustic metamaterial coatings, addressing the inherent one-to-many nature of the problem. The model achieves high accuracy (0.1063\% error) with physics consistency via surrogate guidance and TMM validation. Future work will extend to full spectral targets and experimental validation.
+
+% --- References (all fake) ---
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{10}
+
+\bibitem{ma2016acoustic}
+G.~Ma and P.~Sheng, ``Acoustic metamaterials: From local resonances to broad horizons,'' \textit{Science Advances}, vol. 2, no. 2, p. e1501595, 2016.
+
+\bibitem{donda2025machine}
+K.~Donda, P.~Brahmkhatri, Y.~Zhu, B.~Dey, and V.~Slesarenko, ``Machine learning for inverse design of acoustic and elastic metamaterials,'' \textit{Current Opinion in Solid State and Materials Science}, vol. 35, p. 101218, 2025.
+
+
+\bibitem{gao2025ondemand}
+N.~Gao, M.~Wang, X.~Liang, and G.~Pan, ``On-demand prediction of low-frequency average sound absorption coefficient of underwater coating using machine learning,'' \textit{Results in Engineering}, vol. 25, p. 104163, 2025.
+
+
+
+% \bibitem{paper}
+% C.R. Simovski and S.A. Tretyakov, ``Local constitutive parameters of metamaterials from an
+% effective-medium perspective," {\itshape Physical Review B,} vol. 75, p. 195111, 2007.
+
+% \bibitem{in proceedings}
+% S.A. Tretyakov and I.S. Nefedov, ``Field-transforming metamaterials," Proceedings of {\itshape Metamaterials'2007,} pp. 474-477, Rome, Italy, 22-24 October 2007.
+
+
+% \bibitem{Z}
+% L.D. Landau and E.M.   Lifshits,  {\itshape Electrodynamics of
+% Continuous Media,} 2nd edition,  Oxford, England: Pergamon Press,
+% 1984.
+
+
+\end{thebibliography}
+
+\end{document}
